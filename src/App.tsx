@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import { speciesInfo } from "./constants";
+import { speciesInfo, POLYGON_PULSE_DELAY } from "./constants";
 import {
   cleanTreeSpecies,
   deriveCounties,
@@ -112,6 +112,26 @@ function App() {
     loadData();
   }, []);
 
+  // Add this useEffect in your App component
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is outside the species filter dropdown
+      if (!target.closest('.species-filter')) {
+        setSpeciesDropdownOpen(false);
+      }
+    };
+
+    if (speciesDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [speciesDropdownOpen]);
+
   useEffect(() => {
     const prev = prevZoomRef.current;
 
@@ -124,7 +144,7 @@ function App() {
         setTimeout(() => {
           setShouldPulse(false);
         }, 2000);
-      }, 500);
+      }, POLYGON_PULSE_DELAY);
     }
 
     prevZoomRef.current = currentZoom;
@@ -239,7 +259,12 @@ function App() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "10px", background: "#f0f0f0", zIndex: 1000 }}>
+      <div style={{ 
+        padding: "10px", 
+        background: "#f0f0f0", 
+        zIndex: 1000,
+        position: "relative"
+      }}>
         <label>County: </label>
         <select
           value={selectedCounty}

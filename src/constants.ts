@@ -123,10 +123,14 @@ const darkerShadeColourMap: Record<string,string> = {
   "#1B5E20": "#0D2F10",
 };
 
+// ms delay before pulsing polygons
+const POLYGON_PULSE_DELAY = 100
+
 export {
   speciesMap,
   speciesInfo,
   treeColors,
   genusDisplayNames,
   darkerShadeColourMap,
+  POLYGON_PULSE_DELAY,
 };

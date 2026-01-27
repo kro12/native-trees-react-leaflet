@@ -32,6 +32,56 @@
   cursor: pointer;
 }
 
+/* Fix Leaflet popup z-index */
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+.leaflet-popup {
+  z-index: 700 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4) !important;
+  max-width: 320px !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px !important;
+  line-height: 1.4;
+  min-width: 280px;
+}
+
+/* Ensure popup tip is visible */
+.leaflet-popup-tip-container {
+  z-index: 700 !important;
+}
+
+/* Fix for overlapping elements */
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+.leaflet-control {
+  z-index: 800 !important;
+}
 
 /* Add CSS animation */
 @keyframes pulse {

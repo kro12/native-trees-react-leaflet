@@ -9,3 +9,51 @@
   height: 400px;
   width: 100%;
 }
+
+/* Add CSS animation */
+@keyframes pulse {
+  0%,
+  100% {
+    stroke-width: 1.5;
+    stroke-opacity: 0.9;
+  }
+  50% {
+    stroke-width: 4;
+    stroke-opacity: 1;
+  }
+}
+.pulse-polygon {
+  animation: pulse 1s ease-in-out 2;
+}
+.species-filter {
+  display: inline-block;
+  position: relative;
+  margin-left: 20px;
+}
+.species-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 220px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.species-dropdown.open {
+  display: block;
+}
+.species-checkbox {
+  display: block;
+  margin: 5px 0;
+  cursor: pointer;
+}
+.species-checkbox input {
+  margin-right: 8px;
+  cursor: pointer;
+}

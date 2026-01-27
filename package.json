@@ -4,24 +4,30 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "lint": "eslint . --ext ts,tsx",
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint:fix": "eslint . --ext ts,tsx --fix"
   },
   "dependencies": {
+    "proj4": "^2.20.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "react-leaflet-cluster": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@types/react-leaflet": "^2.8.3",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",

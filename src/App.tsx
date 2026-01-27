@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef, type JSX } from "react";
+import { useState, useEffect, useMemo, useRef, type JSX } from "react";
 import type { Feature, FeatureCollection, Position } from "geojson";
 import { createRoot } from "react-dom/client";
 import {
@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import { treeColors, genusDisplayNames, speciesInfo, type TreeGenus } from "./constants";
+import { speciesInfo } from "./constants";
 import {
   cleanTreeSpecies,
   deriveCounties,
@@ -25,8 +25,10 @@ import "leaflet/dist/leaflet.css";
 import CountyZoomer from "./components/county_zoomer";
 import ZoomTracker from "./components/zoom_tracker";
 import DetailedPopupCard from "./components/detailed_popup_card";
+import SpeciesFilter from "./components/species_filter";
+import './App.css'
 
-// 1️⃣ Define the shape of habitat properties
+// Define the shape of habitat properties
 type HabitatProperties = {
   NS_SPECIES?: string;
   NSNW_DESC?: string;
@@ -38,10 +40,10 @@ type HabitatProperties = {
   _genus: string | null;
 };
 
-// 2️⃣ Define the habitat feature type
+// Define the habitat feature type
 type HabitatFeature = Feature<any, HabitatProperties>;
 
-// 3️⃣ Define the habitat collection type
+// Define the habitat collection type
 type HabitatCollection = FeatureCollection<any, HabitatProperties>;
 
 
@@ -61,14 +63,14 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const habitatsRes = await fetch("/NSNW_Woodland_Habitats_2010.json");
+        const habitatsRes = await fetch("/data/NSNW_Woodland_Habitats_2010.json");
         if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`);
 
         const habitatsData: HabitatCollection = await habitatsRes.json();
         // alternative syntax: const habitatsData = await habitatsRes.json() as HabitatCollection;
-        console.log("✅ Loaded:", habitatsData.features?.length, "polygons");
+        console.log("Loaded:", habitatsData.features?.length, "polygons");
 
-        console.log("🔄 Converting ITM → WGS84...");
+        console.log("Converting ITM → WGS84...");
         habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
 
         habitatsData.features?.forEach((f) => {
@@ -87,7 +89,7 @@ function App() {
           const sp = f.properties.cleanedSpecies;
           speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
         });
-        console.log("🌳 Species distribution:", speciesCounts);
+        console.log("Species distribution:", speciesCounts);
 
         // Extract unique genera for filter (exclude Unknown/null)
         const genera = new Set<string>();
@@ -104,7 +106,7 @@ function App() {
         const allCounties = deriveCounties(habitatsData);
         setCounties(["All", ...allCounties]);
       } catch (err) {
-        console.error("❌ Load failed:", err);
+        console.error("Load failed:", err);
       }
     };
     loadData();
@@ -114,7 +116,7 @@ function App() {
     const prev = prevZoomRef.current;
 
     if (prev < 11 && currentZoom >= 11) {
-      console.log("🎯 Crossed into polygon view - triggering pulse");
+      console.log("Crossed into polygon view - triggering pulse");
 
       setTimeout(() => {
         setShouldPulse(true);
@@ -153,13 +155,6 @@ function App() {
       });
     }
 
-    console.log(
-      "🔍 Filtered to:",
-      filtered.length,
-      "sites. Selected:",
-      selectedSpecies
-    );
-
     return {
       ...habitats,
       features: filtered,
@@ -197,7 +192,7 @@ function App() {
           key={`marker-${
             feature.properties.SITE_NAME || idx
           }-${selectedSpecies.join(",")}`}
-          center={[centroid[1], centroid[0]]}
+          center={centroid as [number, number]}
           radius={6}
           fillColor={color}
           color="#000"
@@ -212,7 +207,7 @@ function App() {
     });
   }, [filteredHabitats, currentZoom, selectedSpecies]);
 
-  const toggleSpecies = (genus: TreeGenus) => {
+  const toggleSpecies = (genus: string) => {
     setSelectedSpecies((prev) => {
       // Prevent unchecking the last species
       if (prev.includes(genus) && prev.length === 1) {
@@ -259,53 +254,14 @@ function App() {
         </select>
 
         {/* Species filter dropdown */}
-        <div className="species-filter">
-          <button
-            onClick={() => setSpeciesDropdownOpen(!speciesDropdownOpen)}
-            style={{ padding: "5px 10px", cursor: "pointer" }}
-          >
-            Species ({selectedSpecies.length}/{availableSpecies.length}) ▾
-          </button>
-          <div
-            className={`species-dropdown ${speciesDropdownOpen ? "open" : ""}`}
-          >
-            <label
-              className="species-checkbox"
-              style={{
-                fontWeight: "bold",
-                borderBottom: "1px solid #ccc",
-                paddingBottom: "5px",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={selectedSpecies.length === availableSpecies.length}
-                onChange={toggleAllSpecies}
-              />
-              Select All
-            </label>
-            {availableSpecies.map((genus) => (
-              <label key={genus} className="species-checkbox">
-                <input
-                  type="checkbox"
-                  checked={selectedSpecies.includes(genus)}
-                  onChange={() => toggleSpecies(genus as TreeGenus)}
-                />
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: "12px",
-                    height: "12px",
-                    backgroundColor: treeColors[genus],
-                    marginRight: "5px",
-                    border: "1px solid #000",
-                  }}
-                ></span>
-                {genusDisplayNames[genus] || genus}
-              </label>
-            ))}
-          </div>
-        </div>
+        <SpeciesFilter
+          selectedSpecies={selectedSpecies}
+          availableSpecies={availableSpecies}
+          speciesDropdownOpen={speciesDropdownOpen}
+          setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+          toggleAllSpecies={toggleAllSpecies}
+          toggleSpecies={toggleSpecies}
+        />
 
         <span
           style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}

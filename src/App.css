@@ -1,14 +1,37 @@
-#root {
+/* #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-}
+} */
 
 .leaflet-container {
-  height: 400px;
   width: 100%;
 }
+
+/* Cluster marker styling */
+.leaflet-marker-icon {
+  display: block !important;
+}
+
+.custom-cluster {
+  display: block !important;
+}
+
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-cluster-anim .leaflet-marker-icon, 
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+
+/* Circle marker styling */
+.leaflet-interactive {
+  cursor: pointer;
+}
+
 
 /* Add CSS animation */
 @keyframes pulse {
@@ -41,9 +64,11 @@
   padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1001;
-  min-width: 220px;
+  min-width: 250px;
   max-height: 300px;
   overflow-y: auto;
+  color:black;
+  text-align: left;
 }
 .species-dropdown.open {
   display: block;

@@ -26,6 +26,7 @@ import CountyZoomer from "./components/county_zoomer";
 import ZoomTracker from "./components/zoom_tracker";
 import DetailedPopupCard from "./components/detailed_popup_card";
 import SpeciesFilter from "./components/species_filter";
+import MapRefCapture from "./components/map_ref_capture";
 import './App.css'
 
 // Define the shape of habitat properties
@@ -50,10 +51,11 @@ type HabitatCollection = FeatureCollection<any, HabitatProperties>;
 function App() {
  const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
   const [counties, setCounties] = useState<string[]>([]);
-  const [selectedCounty, setSelectedCounty] = useState<string>("All");
+  const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
   const prevZoomRef = useRef<number>(8);
+  const mapRef = useRef<L.Map | null>(null)
 
   // Species filter state
   const [availableSpecies, setAvailableSpecies] = useState<string[]>([]);
@@ -112,7 +114,6 @@ function App() {
     loadData();
   }, []);
 
-  // Add this useEffect in your App component
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -133,6 +134,15 @@ function App() {
   }, [speciesDropdownOpen]);
 
   useEffect(() => {
+    if (!selectedCounty || selectedCounty === "") {
+      // Reset to full Ireland view
+      if (mapRef.current) {
+        mapRef.current.setView([53.35, -7.5], 8);
+      }
+    }
+  }, [selectedCounty]);
+
+  useEffect(() => {
     const prev = prevZoomRef.current;
 
     if (prev < 11 && currentZoom >= 11) {
@@ -151,35 +161,81 @@ function App() {
   }, [currentZoom]);
 
   const filteredHabitats = useMemo(() => {
-    if (!habitats) return null;
+  if (!habitats) return null;
 
-    let filtered = habitats.features;
+  let filtered = habitats.features;
 
-    // Filter by county
-    if (selectedCounty !== "All") {
-      filtered = filtered.filter((f) => {
-        const county = f.properties.COUNTY;
-        if (Array.isArray(county)) return county.includes(selectedCounty);
-        return county === selectedCounty;
-      });
-    }
-
-    // Filter by species using stored genus
-    if (
-      selectedSpecies.length > 0 &&
-      selectedSpecies.length < availableSpecies.length
-    ) {
-      filtered = filtered.filter((f) => {
-        const genus = f.properties._genus;
-        return genus && selectedSpecies.includes(genus);
-      });
-    }
-
+  // Filter by county - REQUIRE selection
+  if (!selectedCounty || selectedCounty === "") {
     return {
       ...habitats,
-      features: filtered,
+      features: [], // Return empty if no county selected
     };
-  }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
+  }
+
+  if (selectedCounty !== "All") {
+    filtered = filtered.filter((f) => {
+      const county = f.properties.COUNTY;
+      if (Array.isArray(county)) return county.includes(selectedCounty);
+      return county === selectedCounty;
+    });
+  }
+
+  // Filter by species using stored genus
+  if (
+    selectedSpecies.length > 0 &&
+    selectedSpecies.length < availableSpecies.length
+  ) {
+    filtered = filtered.filter((f) => {
+      const genus = f.properties._genus;
+      return genus && selectedSpecies.includes(genus);
+    });
+  }
+
+  console.log(
+    "🔍 Filtered to:",
+    filtered.length,
+    "sites. Selected:",
+    selectedSpecies
+  );
+
+  return {
+    ...habitats,
+    features: filtered,
+  };
+}, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
+
+
+  // const filteredHabitats = useMemo(() => {
+  //   if (!habitats) return null;
+
+  //   let filtered = habitats.features;
+
+  //   // Filter by county
+  //   if (selectedCounty !== "All") {
+  //     filtered = filtered.filter((f) => {
+  //       const county = f.properties.COUNTY;
+  //       if (Array.isArray(county)) return county.includes(selectedCounty);
+  //       return county === selectedCounty;
+  //     });
+  //   }
+
+  //   // Filter by species using stored genus
+  //   if (
+  //     selectedSpecies.length > 0 &&
+  //     selectedSpecies.length < availableSpecies.length
+  //   ) {
+  //     filtered = filtered.filter((f) => {
+  //       const genus = f.properties._genus;
+  //       return genus && selectedSpecies.includes(genus);
+  //     });
+  //   }
+
+  //   return {
+  //     ...habitats,
+  //     features: filtered,
+  //   };
+  // }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
 
   const styleFeature = (feature?: HabitatFeature): L.PathOptions => {
     if (!feature) return { fillColor: "#808080", weight: 1, opacity: 0.5 };
@@ -271,12 +327,23 @@ function App() {
           onChange={(e) => setSelectedCounty(e.target.value)}
           style={{ marginRight: "20px", padding: "5px" }}
         >
+          <option value="">-- Select a County --</option>
           {counties.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
         </select>
+
+        <span
+          style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
+        >
+          {!selectedCounty || selectedCounty === "" 
+            ? "← Select a county to view sites"
+            : `${filteredHabitats?.features?.length || 0} sites`
+          }
+        </span>
+
 
         {/* Species filter dropdown */}
         <SpeciesFilter
@@ -305,7 +372,7 @@ function App() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap"
         />
-
+        <MapRefCapture mapRef={mapRef} />
         <ZoomTracker setCurrentZoom={setCurrentZoom} />
         <CountyZoomer
           filteredHabitats={filteredHabitats}

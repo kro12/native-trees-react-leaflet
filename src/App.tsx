@@ -377,65 +377,67 @@ function App() {
       )}
 
       <div className="topbar">
-        <div className="topbar-inner">
-          <label>County: </label>
-          <select
-            value={selectedCounty}
-            onChange={(e) => setSelectedCounty(e.target.value)}
-            style={{ marginRight: "20px", padding: "5px" }}
-          >
-            <option value="">-- Select a County --</option>
-            {counties.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+  <div className="topbar-left">
+    <div className="control-group">
+      <label htmlFor="county-select">County</label>
+      <select
+        id="county-select"
+        value={selectedCounty}
+        onChange={(e) => setSelectedCounty(e.target.value)}
+      >
+        <option value="">-- Select a County --</option>
+        {counties.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    </div>
 
-          <span
-            style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
-          >
-            {!selectedCounty || selectedCounty === ""
-              ? "← Select a county to view sites"
-              : `${filteredHabitats?.features?.length || 0} sites`}
-          </span>
+    {!selectedCounty || selectedCounty === "" ? (
+      <span className="helper-text">← Select a county to view sites</span>
+    ) : (
+      <span className="site-count">
+        {filteredHabitats?.features?.length || 0} sites
+      </span>
+    )}
 
-          {selectedCounty &&
-            selectedCounty !== "" &&
-            currentZoom >= 11 &&
-            (filteredHabitats?.features?.length || 0) > 0 && (
-              <button
-                onClick={flashPolygons}
-                disabled={
-                  isFlashing ||
-                  !selectedCounty ||
-                  selectedCounty === "" ||
-                  currentZoom < 11 ||
-                  (filteredHabitats?.features?.length ?? 0) === 0
-                }
-                style={{ marginLeft: 12, padding: "6px 10px" }}
-              >
-                {isFlashing ? "Highlighting..." : "💡 Highlight sites"}
-              </button>
-            )}
+    <SpeciesFilter
+      selectedSpecies={selectedSpecies}
+      availableSpecies={availableSpecies}
+      speciesDropdownOpen={speciesDropdownOpen}
+      setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+      toggleAllSpecies={toggleAllSpecies}
+      toggleSpecies={toggleSpecies}
+    />
 
-          {/* Species filter dropdown */}
-          <SpeciesFilter
-            selectedSpecies={selectedSpecies}
-            availableSpecies={availableSpecies}
-            speciesDropdownOpen={speciesDropdownOpen}
-            setSpeciesDropdownOpen={setSpeciesDropdownOpen}
-            toggleAllSpecies={toggleAllSpecies}
-            toggleSpecies={toggleSpecies}
-          />
+    {selectedCounty &&
+      selectedCounty !== "" &&
+      currentZoom >= 11 &&
+      (filteredHabitats?.features?.length || 0) > 0 && (
+        <button
+          className="highlight-btn"
+          onClick={flashPolygons}
+          disabled={
+            isFlashing ||
+            !selectedCounty ||
+            selectedCounty === "" ||
+            currentZoom < 11 ||
+            (filteredHabitats?.features?.length ?? 0) === 0
+          }
+        >
+          {isFlashing ? "Highlighting..." : "💡 Highlight"}
+        </button>
+      )}
+  </div>
 
-          <span
-            style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
-          >
-            Ancient and Long-established Woodland Inventory 2010
-          </span>
-        </div>
-      </div>
+  <div className="topbar-right">
+    <span className="app-title">
+      Ancient and Long-established Woodland Inventory 2010
+    </span>
+  </div>
+</div>
+
 
       <MapContainer
         center={[53.35, -7.5]}

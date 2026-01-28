@@ -54,8 +54,11 @@ function App() {
   const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+
   const prevZoomRef = useRef<number>(8);
   const mapRef = useRef<L.Map | null>(null)
+  const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
   // Species filter state
   const [availableSpecies, setAvailableSpecies] = useState<string[]>([]);
@@ -160,6 +163,67 @@ function App() {
     prevZoomRef.current = currentZoom;
   }, [currentZoom]);
 
+const flashPolygons = () => {
+  const gj = geoJsonRef.current;
+  if (!gj) return;
+
+  const flashes = 3;
+  const onMs = 250;
+  const offMs = 200;
+
+  // capture original styles per-layer so we can restore exactly
+  const originals = new Map<L.Layer, L.PathOptions>();
+
+  gj.eachLayer((layer) => {
+    if ("setStyle" in layer) {
+      const path = layer as L.Path;
+      originals.set(layer, { ...(path.options as L.PathOptions) });
+    }
+  });
+
+  let i = 0;
+
+  const flashOn = () => {
+    gj.eachLayer((layer) => {
+      if ("setStyle" in layer) {
+        (layer as L.Path).setStyle({
+          weight: 7,
+          opacity: 1,
+          fillOpacity: 0.75,
+          color: "#ffffff", // very visible “halo” flash
+        });
+        (layer as any).bringToFront?.();
+      }
+    });
+  };
+
+  const flashOff = () => {
+    gj.eachLayer((layer) => {
+      if ("setStyle" in layer) {
+        const original = originals.get(layer);
+        if (original) (layer as L.Path).setStyle(original);
+      }
+    });
+  };
+
+  const run = () => {
+    if (i >= flashes) {
+      flashOff();
+      return;
+    }
+    flashOn();
+    window.setTimeout(() => {
+      flashOff();
+      i += 1;
+      window.setTimeout(run, offMs);
+    }, onMs);
+  };
+
+  run();
+};
+
+
+
   const filteredHabitats = useMemo(() => {
   if (!habitats) return null;
 
@@ -205,37 +269,6 @@ function App() {
   };
 }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
 
-
-  // const filteredHabitats = useMemo(() => {
-  //   if (!habitats) return null;
-
-  //   let filtered = habitats.features;
-
-  //   // Filter by county
-  //   if (selectedCounty !== "All") {
-  //     filtered = filtered.filter((f) => {
-  //       const county = f.properties.COUNTY;
-  //       if (Array.isArray(county)) return county.includes(selectedCounty);
-  //       return county === selectedCounty;
-  //     });
-  //   }
-
-  //   // Filter by species using stored genus
-  //   if (
-  //     selectedSpecies.length > 0 &&
-  //     selectedSpecies.length < availableSpecies.length
-  //   ) {
-  //     filtered = filtered.filter((f) => {
-  //       const genus = f.properties._genus;
-  //       return genus && selectedSpecies.includes(genus);
-  //     });
-  //   }
-
-  //   return {
-  //     ...habitats,
-  //     features: filtered,
-  //   };
-  // }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
 
   const styleFeature = (feature?: HabitatFeature): L.PathOptions => {
     if (!feature) return { fillColor: "#808080", weight: 1, opacity: 0.5 };
@@ -344,6 +377,24 @@ function App() {
           }
         </span>
 
+        {
+          selectedCounty && selectedCounty !== ""
+          && currentZoom >= 11
+          && (filteredHabitats?.features?.length || 0) > 0 && (
+            <button
+              onClick={flashPolygons}
+              disabled={
+                isFlashing ||
+                !selectedCounty ||
+                selectedCounty === "" ||
+                currentZoom < 11 ||
+                (filteredHabitats?.features?.length ?? 0) === 0
+              }
+              style={{ marginLeft: 12, padding: "6px 10px" }}
+            >
+              {isFlashing ? "Highlighting..." : "🌳 Highlight sites"}
+            </button>
+       )}
 
         {/* Species filter dropdown */}
         <SpeciesFilter
@@ -358,7 +409,7 @@ function App() {
         <span
           style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
         >
-          {filteredHabitats?.features?.length || 0} sites
+          Native Tree Research Data
         </span>
       </div>
 
@@ -386,28 +437,45 @@ function App() {
             maxClusterRadius={50}
             spiderfyOnMaxZoom={true}
             showCoverageOnHover={false}
-            iconCreateFunction={(cluster: any) => {
-              const count = cluster.getChildCount();
-              const size = 30 + Math.min(count / 10, 20);
-              return L.divIcon({
-                html: `<div style="
-                  background: #228B22;
-                  color: white;
-                  border-radius: 50%;
-                  width: ${size}px;
-                  height: ${size}px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  font-weight: bold;
-                  font-size: ${count > 99 ? "11px" : "13px"};
-                  border: 2px solid white;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                ">${count}</div>`,
-                className: "custom-cluster",
-                iconSize: [size, size],
-              });
-            }}
+iconCreateFunction={(cluster: any) => {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 34 : count < 100 ? 38 : 42;
+
+  return L.divIcon({
+    html: `
+      <div class="cluster-bubble cluster-bubble--countonly" style="width:${size}px;height:${size}px">
+        <span class="cluster-count">${count}</span>
+      </div>
+    `,
+    className: "custom-cluster",
+    iconSize: [size, size],
+  });
+}}
+
+
+
+            // iconCreateFunction={(cluster: any) => {
+            //   const count = cluster.getChildCount();
+            //   const size = 30 + Math.min(count / 10, 20);
+            //   return L.divIcon({
+            //     html: `<div style="
+            //       background: #228B22;
+            //       color: white;
+            //       border-radius: 50%;
+            //       width: ${size}px;
+            //       height: ${size}px;
+            //       display: flex;
+            //       align-items: center;
+            //       justify-content: center;
+            //       font-weight: bold;
+            //       font-size: ${count > 99 ? "11px" : "13px"};
+            //       border: 2px solid white;
+            //       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            //     ">${count}</div>`,
+            //     className: "custom-cluster",
+            //     iconSize: [size, size],
+            //   });
+            // }}
           >
             {clusterMarkers}
           </MarkerClusterGroup>
@@ -415,6 +483,7 @@ function App() {
 
         {currentZoom >= 11 && filteredHabitats && (
           <GeoJSON
+            ref={geoJsonRef}
             key={`habitats-${selectedCounty}-${selectedSpecies.join(",")}-${
               shouldPulse ? "pulse" : "normal"
             }`}

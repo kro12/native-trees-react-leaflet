@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef, type JSX } from "react";
 import type { Feature, FeatureCollection, Position } from "geojson";
 import { createRoot } from "react-dom/client";
@@ -27,7 +26,6 @@ import ZoomTracker from "./components/zoom_tracker";
 import DetailedPopupCard from "./components/detailed_popup_card";
 import SpeciesFilter from "./components/species_filter";
 import MapRefCapture from "./components/map_ref_capture";
-import './App.css'
 
 // Define the shape of habitat properties
 type HabitatProperties = {
@@ -47,17 +45,16 @@ type HabitatFeature = Feature<any, HabitatProperties>;
 // Define the habitat collection type
 type HabitatCollection = FeatureCollection<any, HabitatProperties>;
 
-
 function App() {
- const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
+  const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
   const [counties, setCounties] = useState<string[]>([]);
   const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
-  const [isFlashing, setIsFlashing] = useState(false);
+  const [isFlashing, _] = useState(false);
 
   const prevZoomRef = useRef<number>(8);
-  const mapRef = useRef<L.Map | null>(null)
+  const mapRef = useRef<L.Map | null>(null);
   const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
   // Species filter state
@@ -73,9 +70,7 @@ function App() {
 
         const habitatsData: HabitatCollection = await habitatsRes.json();
         // alternative syntax: const habitatsData = await habitatsRes.json() as HabitatCollection;
-        console.log("Loaded:", habitatsData.features?.length, "polygons");
-
-        console.log("Converting ITM → WGS84...");
+        // Converting ITM → WGS84...
         habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
 
         habitatsData.features?.forEach((f) => {
@@ -94,7 +89,6 @@ function App() {
           const sp = f.properties.cleanedSpecies;
           speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
         });
-        console.log("Species distribution:", speciesCounts);
 
         // Extract unique genera for filter (exclude Unknown/null)
         const genera = new Set<string>();
@@ -120,7 +114,7 @@ function App() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       // Check if click is outside the species filter dropdown
       if (!target.closest('.species-filter')) {
         setSpeciesDropdownOpen(false);
@@ -149,8 +143,7 @@ function App() {
     const prev = prevZoomRef.current;
 
     if (prev < 11 && currentZoom >= 11) {
-      console.log("Crossed into polygon view - triggering pulse");
-
+      // Crossed into polygon view - triggering pulse
       setTimeout(() => {
         setShouldPulse(true);
 
@@ -163,116 +156,106 @@ function App() {
     prevZoomRef.current = currentZoom;
   }, [currentZoom]);
 
-const flashPolygons = () => {
-  const gj = geoJsonRef.current;
-  if (!gj) return;
+  const flashPolygons = () => {
+    const gj = geoJsonRef.current;
+    if (!gj) return;
 
-  const flashes = 3;
-  const onMs = 250;
-  const offMs = 200;
+    const flashes = 3;
+    const onMs = 250;
+    const offMs = 200;
 
-  // capture original styles per-layer so we can restore exactly
-  const originals = new Map<L.Layer, L.PathOptions>();
+    // capture original styles per-layer so we can restore exactly
+    const originals = new Map<L.Layer, L.PathOptions>();
 
-  gj.eachLayer((layer) => {
-    if ("setStyle" in layer) {
-      const path = layer as L.Path;
-      originals.set(layer, { ...(path.options as L.PathOptions) });
-    }
-  });
-
-  let i = 0;
-
-  const flashOn = () => {
     gj.eachLayer((layer) => {
       if ("setStyle" in layer) {
-        (layer as L.Path).setStyle({
-          weight: 7,
-          opacity: 1,
-          fillOpacity: 0.75,
-          color: "#ffffff", // very visible “halo” flash
-        });
-        (layer as any).bringToFront?.();
+        const path = layer as L.Path;
+        originals.set(layer, { ...(path.options as L.PathOptions) });
       }
     });
-  };
 
-  const flashOff = () => {
-    gj.eachLayer((layer) => {
-      if ("setStyle" in layer) {
-        const original = originals.get(layer);
-        if (original) (layer as L.Path).setStyle(original);
+    let i = 0;
+
+    const flashOn = () => {
+      gj.eachLayer((layer) => {
+        if ("setStyle" in layer) {
+          (layer as L.Path).setStyle({
+            weight: 7,
+            opacity: 1,
+            fillOpacity: 0.75,
+            color: "#ffffff", // very visible "halo" flash
+          });
+          (layer as any).bringToFront?.();
+        }
+      });
+    };
+
+    const flashOff = () => {
+      gj.eachLayer((layer) => {
+        if ("setStyle" in layer) {
+          const original = originals.get(layer);
+          if (original) (layer as L.Path).setStyle(original);
+        }
+      });
+    };
+
+    const run = () => {
+      if (i >= flashes) {
+        flashOff();
+        return;
       }
-    });
+      flashOn();
+      window.setTimeout(() => {
+        flashOff();
+        i += 1;
+        window.setTimeout(run, offMs);
+      }, onMs);
+    };
+
+    run();
   };
-
-  const run = () => {
-    if (i >= flashes) {
-      flashOff();
-      return;
-    }
-    flashOn();
-    window.setTimeout(() => {
-      flashOff();
-      i += 1;
-      window.setTimeout(run, offMs);
-    }, onMs);
-  };
-
-  run();
-};
-
-
 
   const filteredHabitats = useMemo(() => {
-  if (!habitats) return null;
+    if (!habitats) return null;
 
-  let filtered = habitats.features;
+    let filtered = habitats.features;
 
-  // Filter by county - REQUIRE selection
-  if (!selectedCounty || selectedCounty === "") {
+    // Filter by county - REQUIRE selection
+    if (!selectedCounty || selectedCounty === "") {
+      return {
+        ...habitats,
+        features: [], // Return empty if no county selected
+      };
+    }
+
+    if (selectedCounty !== "All") {
+      filtered = filtered.filter((f) => {
+        const county = f.properties.COUNTY;
+        if (Array.isArray(county)) return county.includes(selectedCounty);
+        return county === selectedCounty;
+      });
+    }
+
+    // Filter by species using stored genus
+    if (
+      selectedSpecies.length > 0 &&
+      selectedSpecies.length < availableSpecies.length
+    ) {
+      filtered = filtered.filter((f) => {
+        const genus = f.properties._genus;
+        return genus && selectedSpecies.includes(genus);
+      });
+    }
+
     return {
       ...habitats,
-      features: [], // Return empty if no county selected
+      features: filtered,
     };
-  }
-
-  if (selectedCounty !== "All") {
-    filtered = filtered.filter((f) => {
-      const county = f.properties.COUNTY;
-      if (Array.isArray(county)) return county.includes(selectedCounty);
-      return county === selectedCounty;
-    });
-  }
-
-  // Filter by species using stored genus
-  if (
-    selectedSpecies.length > 0 &&
-    selectedSpecies.length < availableSpecies.length
-  ) {
-    filtered = filtered.filter((f) => {
-      const genus = f.properties._genus;
-      return genus && selectedSpecies.includes(genus);
-    });
-  }
-
-  console.log(
-    "🔍 Filtered to:",
-    filtered.length,
-    "sites. Selected:",
-    selectedSpecies
-  );
-
-  return {
-    ...habitats,
-    features: filtered,
-  };
-}, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
-
+  }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
 
   const styleFeature = (feature?: HabitatFeature): L.PathOptions => {
     if (!feature) return { fillColor: "#808080", weight: 1, opacity: 0.5 };
-    
+
     const species = feature.properties.cleanedSpecies || "Unknown";
     const color = getColorForSpecies(species);
     const borderColor = getDarkerShade(color);
@@ -338,79 +321,120 @@ const flashPolygons = () => {
     }
   };
 
-  if (!habitats) {
-    return (
-      <div style={{ padding: "20px", fontSize: "18px" }}>
-        Converting coordinates...
-      </div>
-    );
-  }
+  // if (!habitats) {
+  //   return (
+  //     <div style={{ padding: "20px", fontSize: "18px" }}>
+  //       Converting coordinates...
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ 
-        padding: "10px", 
-        background: "#f0f0f0", 
-        zIndex: 1000,
-        position: "relative"
-      }}>
-        <label>County: </label>
-        <select
-          value={selectedCounty}
-          onChange={(e) => setSelectedCounty(e.target.value)}
-          style={{ marginRight: "20px", padding: "5px" }}
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+
+      {/* Loading overlay - blocks entire UI until data loads */}
+      {!habitats && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: "16px",
+          }}
         >
-          <option value="">-- Select a County --</option>
-          {counties.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              border: "4px solid #f3f4f6",
+              borderTop: "4px solid #f59e0b",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: 500 }}>
+            Converting coordinates...
+          </div>
+        </div>
+      )}
 
-        <span
-          style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
-        >
-          {!selectedCounty || selectedCounty === "" 
-            ? "← Select a county to view sites"
-            : `${filteredHabitats?.features?.length || 0} sites`
-          }
-        </span>
+      <div className="topbar">
+        <div className="topbar-inner">
+          <label>County: </label>
+          <select
+            value={selectedCounty}
+            onChange={(e) => setSelectedCounty(e.target.value)}
+            style={{ marginRight: "20px", padding: "5px" }}
+          >
+            <option value="">-- Select a County --</option>
+            {counties.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
 
-        {
-          selectedCounty && selectedCounty !== ""
-          && currentZoom >= 11
-          && (filteredHabitats?.features?.length || 0) > 0 && (
-            <button
-              onClick={flashPolygons}
-              disabled={
-                isFlashing ||
-                !selectedCounty ||
-                selectedCounty === "" ||
-                currentZoom < 11 ||
-                (filteredHabitats?.features?.length ?? 0) === 0
-              }
-              style={{ marginLeft: 12, padding: "6px 10px" }}
-            >
-              {isFlashing ? "Highlighting..." : "🌳 Highlight sites"}
-            </button>
-       )}
+          <span
+            style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
+          >
+            {!selectedCounty || selectedCounty === ""
+              ? "← Select a county to view sites"
+              : `${filteredHabitats?.features?.length || 0} sites`}
+          </span>
 
-        {/* Species filter dropdown */}
-        <SpeciesFilter
-          selectedSpecies={selectedSpecies}
-          availableSpecies={availableSpecies}
-          speciesDropdownOpen={speciesDropdownOpen}
-          setSpeciesDropdownOpen={setSpeciesDropdownOpen}
-          toggleAllSpecies={toggleAllSpecies}
-          toggleSpecies={toggleSpecies}
-        />
+          {selectedCounty &&
+            selectedCounty !== "" &&
+            currentZoom >= 11 &&
+            (filteredHabitats?.features?.length || 0) > 0 && (
+              <button
+                onClick={flashPolygons}
+                disabled={
+                  isFlashing ||
+                  !selectedCounty ||
+                  selectedCounty === "" ||
+                  currentZoom < 11 ||
+                  (filteredHabitats?.features?.length ?? 0) === 0
+                }
+                style={{ marginLeft: 12, padding: "6px 10px" }}
+              >
+                {isFlashing ? "Highlighting..." : "💡 Highlight sites"}
+              </button>
+            )}
 
-        <span
-          style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
-        >
-          Native Tree Research Data
-        </span>
+          {/* Species filter dropdown */}
+          <SpeciesFilter
+            selectedSpecies={selectedSpecies}
+            availableSpecies={availableSpecies}
+            speciesDropdownOpen={speciesDropdownOpen}
+            setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+            toggleAllSpecies={toggleAllSpecies}
+            toggleSpecies={toggleSpecies}
+          />
+
+          <span
+            style={{ marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}
+          >
+            Ancient and Long-established Woodland Inventory 2010
+          </span>
+        </div>
       </div>
 
       <MapContainer
@@ -437,45 +461,20 @@ const flashPolygons = () => {
             maxClusterRadius={50}
             spiderfyOnMaxZoom={true}
             showCoverageOnHover={false}
-iconCreateFunction={(cluster: any) => {
-  const count = cluster.getChildCount();
-  const size = count < 10 ? 34 : count < 100 ? 38 : 42;
+            iconCreateFunction={(cluster: any) => {
+              const count = cluster.getChildCount();
+              const size = count < 10 ? 34 : count < 100 ? 38 : 42;
 
-  return L.divIcon({
-    html: `
-      <div class="cluster-bubble cluster-bubble--countonly" style="width:${size}px;height:${size}px">
-        <span class="cluster-count">${count}</span>
-      </div>
-    `,
-    className: "custom-cluster",
-    iconSize: [size, size],
-  });
-}}
-
-
-
-            // iconCreateFunction={(cluster: any) => {
-            //   const count = cluster.getChildCount();
-            //   const size = 30 + Math.min(count / 10, 20);
-            //   return L.divIcon({
-            //     html: `<div style="
-            //       background: #228B22;
-            //       color: white;
-            //       border-radius: 50%;
-            //       width: ${size}px;
-            //       height: ${size}px;
-            //       display: flex;
-            //       align-items: center;
-            //       justify-content: center;
-            //       font-weight: bold;
-            //       font-size: ${count > 99 ? "11px" : "13px"};
-            //       border: 2px solid white;
-            //       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            //     ">${count}</div>`,
-            //     className: "custom-cluster",
-            //     iconSize: [size, size],
-            //   });
-            // }}
+              return L.divIcon({
+                html: `
+                  <div class="cluster-bubble cluster-bubble--countonly" style="width:${size}px;height:${size}px">
+                    <span class="cluster-count">${count}</span>
+                  </div>
+                `,
+                className: "custom-cluster",
+                iconSize: [size, size],
+              });
+            }}
           >
             {clusterMarkers}
           </MarkerClusterGroup>
@@ -525,5 +524,4 @@ iconCreateFunction={(cluster: any) => {
   );
 }
 
-
-export default App
+export default App;

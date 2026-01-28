@@ -16,8 +16,7 @@ function CountyZoomer({ filteredHabitats, selectedCounty }: Props) {
   useEffect(() => {
     if (!filteredHabitats || filteredHabitats.features.length === 0) return;
 
-    console.log("🗺️ Zooming to:", selectedCounty);
-
+    // Zooming to selected County
     if (selectedCounty === "All") {
       map.flyTo([53.35, -7.5], 8, { duration: 1 });
       return;
@@ -53,7 +52,7 @@ function CountyZoomer({ filteredHabitats, selectedCounty }: Props) {
         duration: 1,
       });
     }
-  }, [selectedCounty, filteredHabitats, map]); // ✅ Added all dependencies orig was `selectedCounty only!!!
+  }, [selectedCounty, filteredHabitats, map]);
 
   return null;
 }

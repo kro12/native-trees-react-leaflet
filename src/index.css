@@ -1,76 +1,268 @@
+/* index.css */
+
+/* =========================
+   Typography + layout base
+   ========================= */
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  
-  /* Force light mode */
-  color-scheme: light;
-  color: #213547;
-  background-color: #ffffff;
-  
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --app-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --base-font-size: 14px;
+  --toolbar-font-size: 13px;
 }
 
-* {
-  box-sizing: border-box;
+html {
+  font-size: var(--base-font-size);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: var(--app-font);
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #ffffff;
-  color: #213547;
+  overflow: hidden; /* prevents scrollbars that steal height */
 }
 
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+/* Root wrapper: toolbar + map fills viewport */
 #root {
   height: 100vh;
-  margin: 0;
-  padding: 0;
+}
+
+/* =========================
+   Toolbar (top bar)
+   ========================= */
+.topbar {
+  padding: 10px;
+  background: #f0f0f0;
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.topbar label {
+  font-weight: 600;
+}
+
+/* =========================
+   Leaflet sizing + font
+   ========================= */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: var(--app-font) !important;
+}
+
+.leaflet-popup,
+.leaflet-control,
+.leaflet-tooltip {
+  font-family: var(--app-font) !important;
+}
+
+/* =========================
+   Z-index layering
+   ========================= */
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+.leaflet-control {
+  z-index: 800 !important;
+}
+
+/* =========================
+   Cluster marker styling
+   ========================= */
+.leaflet-marker-icon {
+  display: block !important;
+}
+
+.leaflet-div-icon.custom-cluster {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-cluster {
+  display: block !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-cluster-anim .leaflet-marker-icon,
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+
+/* Bubble (count-only) */
+.custom-cluster .cluster-bubble {
+  border-radius: 999px;
   overflow: hidden;
+  background: rgba(255, 251, 235, 0.95);
+  color: #111827;
+  border: 2px solid rgba(245, 158, 11, 0.45);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.20),
+    0 0 0 2px rgba(255, 255, 255, 0.60),
+    0 0 16px rgba(245, 158, 11, 0.45),
+    0 0 28px rgba(245, 158, 11, 0.25);
+  display: grid;
+  place-items: center;
 }
 
-select, button, input {
-  font-family: inherit;
-  font-size: 100%;
-  color: #213547;
-  background-color: #ffffff;
+.custom-cluster .cluster-count {
+  font-weight: 850;
+  font-size: 13px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
 }
 
-button {
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  padding: 0.5em 1em;
-  font-weight: 500;
+.custom-cluster .cluster-bubble {
+  transition: box-shadow 120ms ease-out, transform 120ms ease-out;
+}
+
+.custom-cluster:hover .cluster-bubble {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.26),
+    0 0 0 2px rgba(255, 255, 255, 0.70),
+    0 0 22px rgba(245, 158, 11, 0.55),
+    0 0 40px rgba(245, 158, 11, 0.32);
+}
+
+/* =========================
+   Circle marker interaction
+   ========================= */
+.leaflet-interactive {
   cursor: pointer;
-  transition: all 0.2s;
-  background-color: #f9f9f9;
 }
 
-button:hover {
-  border-color: #999;
-  background-color: #f0f0f0;
+/* =========================
+   Popup styling
+   ========================= */
+.leaflet-popup {
+  z-index: 700 !important;
 }
 
-button:focus,
-button:focus-visible {
-  outline: 2px solid #4CAF50;
-  outline-offset: 2px;
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4) !important;
+  max-width: 320px !important;
 }
 
-select {
+.leaflet-popup-content {
+  margin: 12px !important;
+  line-height: 1.4;
+  min-width: 280px;
+}
+
+.leaflet-popup-tip-container {
+  z-index: 700 !important;
+}
+
+/* =========================
+   Polygon pulse animation
+   ========================= */
+@keyframes pulse {
+  0%,
+  100% {
+    stroke-width: 1.5;
+    stroke-opacity: 0.9;
+  }
+  50% {
+    stroke-width: 4;
+    stroke-opacity: 1;
+  }
+}
+
+.pulse-polygon {
+  animation: pulse 1s ease-in-out 2;
+}
+
+/* =========================
+   Species filter dropdown
+   ========================= */
+.species-filter {
+  display: inline-block;
+  position: relative;
+  margin-left: 20px;
+}
+
+.species-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #ffffff;
   border: 1px solid #ccc;
   border-radius: 4px;
-  padding: 5px 10px;
-  cursor: pointer;
-  background-color: #fff;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  color: #000;
+  text-align: left;
 }
 
-select:focus {
-  outline: 2px solid #4CAF50;
-  outline-offset: 0;
+.species-dropdown.open {
+  display: block;
+}
+
+.species-checkbox {
+  display: block;
+  margin: 5px 0;
+  cursor: pointer;
+}
+
+.species-checkbox input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+
+/* Loading spinner  */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -126,11 +126,45 @@ const darkerShadeColourMap: Record<string,string> = {
 // ms delay before pulsing polygons
 const POLYGON_PULSE_DELAY = 100
 
+type TitleLayerConfig = {
+  url: string
+  attribution: string
+  label: string
+}
+
+type TitleLayerMap = {
+  street: TitleLayerConfig
+  satellite: TitleLayerConfig
+  terrain: TitleLayerConfig
+}
+
+// Tile layer configurations
+const titleLayers: TitleLayerMap = {
+  street: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenStreetMap contributors",
+    label: "Street"
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "&copy; Esri",
+    label: "Satellite"
+  },
+  terrain: {
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenTopoMap contributors",
+    label: "Terrain"
+  }
+};
+
+
 export {
   speciesMap,
   speciesInfo,
   treeColors,
   genusDisplayNames,
   darkerShadeColourMap,
+  titleLayers,
+  type TitleLayerMap,
   POLYGON_PULSE_DELAY,
 };

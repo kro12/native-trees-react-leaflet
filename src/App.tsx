@@ -10,7 +10,7 @@ import {
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import { speciesInfo, POLYGON_PULSE_DELAY } from "./constants";
+import { speciesInfo, POLYGON_PULSE_DELAY, titleLayers, type TitleLayerMap } from "./constants";
 import {
   cleanTreeSpecies,
   deriveCounties,
@@ -52,6 +52,7 @@ function App() {
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
   const [isFlashing, _] = useState(false);
+  const [baseLayer, setBaseLayer] = useState<keyof TitleLayerMap>("satellite");
 
   const prevZoomRef = useRef<number>(8);
   const mapRef = useRef<L.Map | null>(null);
@@ -411,6 +412,20 @@ function App() {
       toggleSpecies={toggleSpecies}
     />
 
+    <div className="control-group">
+      <label htmlFor="layer-select">Map</label>
+      <select
+        id="layer-select"
+        value={baseLayer}
+        onChange={(e) => setBaseLayer(e.target.value as keyof TitleLayerMap)}
+      >
+        <option value="street">Street</option>
+        <option value="satellite">Satellite</option>
+        <option value="terrain">Terrain</option>
+      </select>
+    </div>
+
+
     {selectedCounty &&
       selectedCounty !== "" &&
       currentZoom >= 11 &&
@@ -445,10 +460,11 @@ function App() {
         style={{ flex: 1 }}
         scrollWheelZoom={true}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap"
-        />
+      <TileLayer
+        url={titleLayers[baseLayer].url}
+        attribution={titleLayers[baseLayer].attribution}
+        key={baseLayer}
+      />
         <MapRefCapture mapRef={mapRef} />
         <ZoomTracker setCurrentZoom={setCurrentZoom} />
         <CountyZoomer

@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef, type JSX } from "react";
-import type { Feature, FeatureCollection, Position } from "geojson";
 import { createRoot } from "react-dom/client";
 import {
   MapContainer,
@@ -10,7 +9,12 @@ import {
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import { speciesInfo, POLYGON_PULSE_DELAY, titleLayers, type TitleLayerMap } from "./constants";
+import {
+  speciesInfo,
+  POLYGON_PULSE_DELAY,
+  titleLayers,
+  type TileLayersMap, type HabitatFeature, type HabitatCollection,
+} from "./constants";
 import {
   cleanTreeSpecies,
   deriveCounties,
@@ -27,24 +31,6 @@ import DetailedPopupCard from "./components/detailed_popup_card";
 import SpeciesFilter from "./components/species_filter";
 import MapRefCapture from "./components/map_ref_capture";
 
-// Define the shape of habitat properties
-type HabitatProperties = {
-  NS_SPECIES?: string;
-  NSNW_DESC?: string;
-  COUNTY: string | string[];
-  SITE_NAME?: string;
-  AREA: number;
-  cleanedSpecies: string;
-  _centroid: Position;
-  _genus: string | null;
-};
-
-// Define the habitat feature type
-type HabitatFeature = Feature<any, HabitatProperties>;
-
-// Define the habitat collection type
-type HabitatCollection = FeatureCollection<any, HabitatProperties>;
-
 function App() {
   const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
   const [counties, setCounties] = useState<string[]>([]);
@@ -52,7 +38,7 @@ function App() {
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
   const [isFlashing, _] = useState(false);
-  const [baseLayer, setBaseLayer] = useState<keyof TitleLayerMap>("satellite");
+  const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>("satellite");
 
   const prevZoomRef = useRef<number>(8);
   const mapRef = useRef<L.Map | null>(null);
@@ -70,8 +56,9 @@ function App() {
         if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`);
 
         const habitatsData: HabitatCollection = await habitatsRes.json();
-        // alternative syntax: const habitatsData = await habitatsRes.json() as HabitatCollection;
-        // Converting ITM → WGS84...
+        console.log("Loaded:", habitatsData.features?.length, "polygons");
+
+        console.log("Converting ITM → WGS84...");
         habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
 
         habitatsData.features?.forEach((f) => {
@@ -80,18 +67,16 @@ function App() {
           f.properties._centroid = getCentroid(f.geometry.coordinates);
           f.properties._genus = getGenusFromSpecies(
             f.properties.cleanedSpecies
-          ); // Store genus
+          );
         });
 
-        // Get unique species with counts
-        // Quercus: 45, Betula: 32, etc.
         const speciesCounts: Record<string, number> = {};
         habitatsData.features.forEach((f) => {
           const sp = f.properties.cleanedSpecies;
           speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
         });
+        console.log("Species distribution:", speciesCounts);
 
-        // Extract unique genera for filter (exclude Unknown/null)
         const genera = new Set<string>();
         habitatsData.features.forEach((f) => {
           const genus = f.properties._genus;
@@ -100,7 +85,7 @@ function App() {
 
         const speciesList = Array.from(genera).sort();
         setAvailableSpecies(speciesList);
-        setSelectedSpecies(speciesList); // All selected by default
+        setSelectedSpecies(speciesList);
 
         setHabitats(habitatsData);
         const allCounties = deriveCounties(habitatsData);
@@ -116,7 +101,6 @@ function App() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
-      // Check if click is outside the species filter dropdown
       if (!target.closest('.species-filter')) {
         setSpeciesDropdownOpen(false);
       }
@@ -133,7 +117,6 @@ function App() {
 
   useEffect(() => {
     if (!selectedCounty || selectedCounty === "") {
-      // Reset to full Ireland view
       if (mapRef.current) {
         mapRef.current.setView([53.35, -7.5], 8);
       }
@@ -144,7 +127,8 @@ function App() {
     const prev = prevZoomRef.current;
 
     if (prev < 11 && currentZoom >= 11) {
-      // Crossed into polygon view - triggering pulse
+      console.log("Crossed into polygon view - triggering pulse");
+
       setTimeout(() => {
         setShouldPulse(true);
 
@@ -165,7 +149,6 @@ function App() {
     const onMs = 250;
     const offMs = 200;
 
-    // capture original styles per-layer so we can restore exactly
     const originals = new Map<L.Layer, L.PathOptions>();
 
     gj.eachLayer((layer) => {
@@ -184,7 +167,7 @@ function App() {
             weight: 7,
             opacity: 1,
             fillOpacity: 0.75,
-            color: "#ffffff", // very visible "halo" flash
+            color: "#ffffff",
           });
           (layer as any).bringToFront?.();
         }
@@ -221,11 +204,10 @@ function App() {
 
     let filtered = habitats.features;
 
-    // Filter by county - REQUIRE selection
     if (!selectedCounty || selectedCounty === "") {
       return {
         ...habitats,
-        features: [], // Return empty if no county selected
+        features: [],
       };
     }
 
@@ -237,7 +219,6 @@ function App() {
       });
     }
 
-    // Filter by species using stored genus
     if (
       selectedSpecies.length > 0 &&
       selectedSpecies.length < availableSpecies.length
@@ -247,6 +228,13 @@ function App() {
         return genus && selectedSpecies.includes(genus);
       });
     }
+
+    console.log(
+      "🔍 Filtered to:",
+      filtered.length,
+      "sites. Selected:",
+      selectedSpecies
+    );
 
     return {
       ...habitats,
@@ -302,7 +290,6 @@ function App() {
 
   const toggleSpecies = (genus: string) => {
     setSelectedSpecies((prev) => {
-      // Prevent unchecking the last species
       if (prev.includes(genus) && prev.length === 1) {
         return prev;
       }
@@ -315,39 +302,18 @@ function App() {
 
   const toggleAllSpecies = () => {
     if (selectedSpecies.length === availableSpecies.length) {
-      // Keep first one selected instead of going to zero
       setSelectedSpecies([availableSpecies[0]]);
     } else {
       setSelectedSpecies([...availableSpecies]);
     }
   };
 
-  // if (!habitats) {
-  //   return (
-  //     <div style={{ padding: "20px", fontSize: "18px" }}>
-  //       Converting coordinates...
-  //     </div>
-  //   );
-  // }
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-
-      {/* Loading overlay - blocks entire UI until data loads */}
+    <>
       {!habitats && (
         <div
           style={{
-            position: "absolute",
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
@@ -377,94 +343,96 @@ function App() {
         </div>
       )}
 
-      <div className="topbar">
-  <div className="topbar-left">
-    <div className="control-group">
-      <label htmlFor="county-select">County</label>
-      <select
-        id="county-select"
-        value={selectedCounty}
-        onChange={(e) => setSelectedCounty(e.target.value)}
-      >
-        <option value="">-- Select a County --</option>
-        {counties.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    {!selectedCounty || selectedCounty === "" ? (
-      <span className="helper-text">← Select a county to view sites</span>
-    ) : (
-      <span className="site-count">
-        {filteredHabitats?.features?.length || 0} sites
-      </span>
-    )}
-
-    <SpeciesFilter
-      selectedSpecies={selectedSpecies}
-      availableSpecies={availableSpecies}
-      speciesDropdownOpen={speciesDropdownOpen}
-      setSpeciesDropdownOpen={setSpeciesDropdownOpen}
-      toggleAllSpecies={toggleAllSpecies}
-      toggleSpecies={toggleSpecies}
-    />
-
-    <div className="control-group">
-      <label htmlFor="layer-select">Map</label>
-      <select
-        id="layer-select"
-        value={baseLayer}
-        onChange={(e) => setBaseLayer(e.target.value as keyof TitleLayerMap)}
-      >
-        <option value="street">Street</option>
-        <option value="satellite">Satellite</option>
-        <option value="terrain">Terrain</option>
-      </select>
-    </div>
-
-
-    {selectedCounty &&
-      selectedCounty !== "" &&
-      currentZoom >= 11 &&
-      (filteredHabitats?.features?.length || 0) > 0 && (
-        <button
-          className="highlight-btn"
-          onClick={flashPolygons}
-          disabled={
-            isFlashing ||
-            !selectedCounty ||
-            selectedCounty === "" ||
-            currentZoom < 11 ||
-            (filteredHabitats?.features?.length ?? 0) === 0
-          }
-        >
-          {isFlashing ? "Highlighting..." : "💡 Highlight"}
-        </button>
-      )}
-  </div>
-
-  <div className="topbar-right">
-    <span className="app-title">
-      Ancient and Long-established Woodland Inventory 2010
-    </span>
-  </div>
-</div>
-
-
       <MapContainer
         center={[53.35, -7.5]}
         zoom={8}
-        style={{ flex: 1 }}
+        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
         scrollWheelZoom={true}
       >
-      <TileLayer
-        url={titleLayers[baseLayer].url}
-        attribution={titleLayers[baseLayer].attribution}
-        key={baseLayer}
-      />
+        <TileLayer
+          url={titleLayers[baseLayer].url}
+          attribution={titleLayers[baseLayer].attribution}
+          key={baseLayer}
+        />
+
+        <div className="map-controls-left">
+          <div className="control-panel">
+            <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
+
+            <div className="control-section">
+              <label htmlFor="county-select">County</label>
+              <select
+                id="county-select"
+                value={selectedCounty}
+                onChange={(e) => setSelectedCounty(e.target.value)}
+              >
+                <option value="">-- Select a County --</option>
+                {counties.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!selectedCounty || selectedCounty === "" ? (
+              <div className="info-text">Select a county to view sites</div>
+            ) : (
+              <div className="site-count-badge">
+                {filteredHabitats?.features?.length || 0} sites found
+              </div>
+            )}
+
+            <div className="control-section">
+              <SpeciesFilter
+                selectedSpecies={selectedSpecies}
+                availableSpecies={availableSpecies}
+                speciesDropdownOpen={speciesDropdownOpen}
+                setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+                toggleAllSpecies={toggleAllSpecies}
+                toggleSpecies={toggleSpecies}
+              />
+            </div>
+
+            <div className="control-section">
+              <label>Base Map</label>
+              <div className="layer-buttons">
+                <button
+                  className={`layer-btn ${baseLayer === 'street' ? 'active' : ''}`}
+                  onClick={() => setBaseLayer('street')}
+                >
+                  Street
+                </button>
+                <button
+                  className={`layer-btn ${baseLayer === 'satellite' ? 'active' : ''}`}
+                  onClick={() => setBaseLayer('satellite')}
+                >
+                  Satellite
+                </button>
+                <button
+                  className={`layer-btn ${baseLayer === 'terrain' ? 'active' : ''}`}
+                  onClick={() => setBaseLayer('terrain')}
+                >
+                  Terrain
+                </button>
+              </div>
+            </div>
+
+            {selectedCounty &&
+              selectedCounty !== "" &&
+              currentZoom >= 11 &&
+              (filteredHabitats?.features?.length || 0) > 0 && (
+                <button
+                  className="highlight-btn-full"
+                  onClick={flashPolygons}
+                  disabled={isFlashing}
+                >
+                  {isFlashing ? "Highlighting..." : "💡 Highlight All Sites"}
+                </button>
+              )}
+          </div>
+        </div>
+
         <MapRefCapture mapRef={mapRef} />
         <ZoomTracker setCurrentZoom={setCurrentZoom} />
         <CountyZoomer
@@ -538,7 +506,7 @@ function App() {
           />
         )}
       </MapContainer>
-    </div>
+    </>
   );
 }
 

@@ -356,3 +356,175 @@ textarea {
     transform: rotate(360deg);
   }
 }
+
+/* Cro */
+/* =========================
+   Map controls (left side floating panel)
+   ========================= */
+.map-controls-left {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  max-width: 320px;
+}
+
+.control-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f59e0b;
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-section label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-section select,
+#county-select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #111827;
+  cursor: pointer;
+  transition: border-color 150ms, box-shadow 150ms;
+  width: 100%;
+}
+
+.control-section select:hover,
+#county-select:hover {
+  border-color: #9ca3af;
+}
+
+.control-section select:focus,
+#county-select:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.info-text {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.site-count-badge {
+  font-size: 14px;
+  font-weight: 700;
+  color: #059669;
+  background: #d1fae5;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.layer-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.layer-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.layer-btn:hover {
+  background: #e5e7eb;
+}
+
+.layer-btn.active {
+  background: #f59e0b;
+  color: #ffffff;
+  border-color: #f59e0b;
+}
+
+.highlight-btn-full {
+  width: 100%;
+  padding: 10px 12px;
+  background: linear-gradient(to bottom, #fbbf24, #f59e0b);
+  color: #78350f;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms, box-shadow 150ms;
+  margin-top: 6px;
+}
+
+.highlight-btn-full:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3);
+}
+
+.highlight-btn-full:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.highlight-btn-full:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Adjust species filter for vertical layout */
+.species-filter {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.species-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 1001;
+  max-height: 300px;
+  overflow-y: auto;
+  color: #000;
+  text-align: left;
+  margin-top: 4px;
+}

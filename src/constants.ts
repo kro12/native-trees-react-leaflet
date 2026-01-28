@@ -1,3 +1,5 @@
+import type { Feature, FeatureCollection, Position } from "geojson";
+
 export type TreeGenus = "Quercus" | "Fraxinus" | "Betula" | "Alnus" | "Corylus" | "Salix" | "Pinus" | "Ilex"
 
 const speciesMap: Record<string,string> = {
@@ -132,14 +134,14 @@ type TitleLayerConfig = {
   label: string
 }
 
-type TitleLayerMap = {
+type TileLayersMap = {
   street: TitleLayerConfig
   satellite: TitleLayerConfig
   terrain: TitleLayerConfig
 }
 
 // Tile layer configurations
-const titleLayers: TitleLayerMap = {
+const titleLayers: TileLayersMap = {
   street: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "&copy; OpenStreetMap contributors",
@@ -157,6 +159,23 @@ const titleLayers: TitleLayerMap = {
   }
 };
 
+// Define the shape of habitat properties
+type HabitatProperties = {
+  NS_SPECIES?: string;
+  NSNW_DESC?: string;
+  COUNTY: string | string[];
+  SITE_NAME?: string;
+  AREA: number;
+  cleanedSpecies: string;
+  _centroid: Position;
+  _genus: string | null;
+};
+
+// Define the habitat feature type
+type HabitatFeature = Feature<any, HabitatProperties>;
+
+// Define the habitat collection type
+type HabitatCollection = FeatureCollection<any, HabitatProperties>;
 
 export {
   speciesMap,
@@ -165,6 +184,8 @@ export {
   genusDisplayNames,
   darkerShadeColourMap,
   titleLayers,
-  type TitleLayerMap,
+  type TileLayersMap,
+  type HabitatFeature,
+  type HabitatCollection,
   POLYGON_PULSE_DELAY,
 };

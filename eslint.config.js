@@ -5,6 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import reactX from 'eslint-plugin-react-x'
 import reactDom from 'eslint-plugin-react-dom'
+import prettier from 'eslint-config-prettier' // NEW: Import Prettier config
 
 export default tseslint.config(
   { ignores: ['dist'] },
@@ -39,4 +40,5 @@ export default tseslint.config(
       ],
     },
   },
+  prettier // NEW: Add Prettier config LAST to disable conflicting ESLint formatting rules
 )

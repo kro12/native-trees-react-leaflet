@@ -1,246 +1,241 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { createRoot } from "react-dom/client";
-import {
-  MapContainer,
-  TileLayer,
-  GeoJSON,
-} from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import L from "leaflet";
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { createRoot } from 'react-dom/client'
+import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet'
+import MarkerClusterGroup from 'react-leaflet-cluster'
+import L from 'leaflet'
 import {
   speciesInfo,
   titleLayers,
   POLYGON_PULSE_DELAY,
   DEFAULT_MAP_COORDS,
-  type TileLayersMap, type HabitatFeature, type HabitatCollection, type MarkerClusterType
-} from "./constants";
-import {
-  loadHabitatData,
-  deriveStyleFeature,
-} from "./utils";
+  type TileLayersMap,
+  type HabitatFeature,
+  type HabitatCollection,
+  type MarkerClusterType,
+} from './constants'
+import { loadHabitatData, deriveStyleFeature } from './utils'
 
-import "leaflet/dist/leaflet.css";
-import CountyZoomer from "./components/county_zoomer";
-import ZoomTracker from "./components/zoom_tracker";
-import DetailedPopupCard from "./components/detailed_popup_card";
-import SpeciesFilter from "./components/species_filter";
-import MapRefCapture from "./components/map_ref_capture";
-import HabitatMarkers from "./components/habitat_markers";
-import { useFlashPolygons } from './hooks/useFlashPolygons';
+import 'leaflet/dist/leaflet.css'
+import CountyZoomer from './components/county_zoomer'
+import ZoomTracker from './components/zoom_tracker'
+import DetailedPopupCard from './components/detailed_popup_card'
+import SpeciesFilter from './components/species_filter'
+import MapRefCapture from './components/map_ref_capture'
+import HabitatMarkers from './components/habitat_markers'
+import { useFlashPolygons } from './hooks/useFlashPolygons'
 
 function App() {
-  const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
-  const [counties, setCounties] = useState<string[]>([]);
-  const [selectedCounty, setSelectedCounty] = useState<string>("");
-  const [currentZoom, setCurrentZoom] = useState<number>(8);
-  const [shouldPulse, setShouldPulse] = useState<boolean>(false);
+  const [habitats, setHabitats] = useState<HabitatCollection | null>(null)
+  const [counties, setCounties] = useState<string[]>([])
+  const [selectedCounty, setSelectedCounty] = useState<string>('')
+  const [currentZoom, setCurrentZoom] = useState<number>(8)
+  const [shouldPulse, setShouldPulse] = useState<boolean>(false)
 
-  const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>("satellite");
-  const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>('satellite')
+  const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
-
-  const prevZoomRef = useRef<number>(8);
-  const mapRef = useRef<L.Map | null>(null);
-  const geoJsonRef = useRef<L.GeoJSON>(null);
+  const prevZoomRef = useRef<number>(8)
+  const mapRef = useRef<L.Map | null>(null)
+  const geoJsonRef = useRef<L.GeoJSON>(null)
 
   const { flash, isFlashing } = useFlashPolygons(geoJsonRef)
 
   // Species filter state
-  const [availableSpecies, setAvailableSpecies] = useState<string[]>([]);
-  const [selectedSpecies, setSelectedSpecies] = useState<string[]>([]);
-  const [speciesDropdownOpen, setSpeciesDropdownOpen] = useState<boolean>(false);
+  const [availableSpecies, setAvailableSpecies] = useState<string[]>([])
+  const [selectedSpecies, setSelectedSpecies] = useState<string[]>([])
+  const [speciesDropdownOpen, setSpeciesDropdownOpen] = useState<boolean>(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const {habitatsData, counties: countyList, availableSpecies: speciesList} = await loadHabitatData()
-        setHabitats(habitatsData);
-        setCounties(countyList);
-        setAvailableSpecies(speciesList);
-        setSelectedSpecies(speciesList);
+        const {
+          habitatsData,
+          counties: countyList,
+          availableSpecies: speciesList,
+        } = await loadHabitatData()
+        setHabitats(habitatsData)
+        setCounties(countyList)
+        setAvailableSpecies(speciesList)
+        setSelectedSpecies(speciesList)
       } catch (err) {
-        console.error("Load failed:", err);
+        console.error('Load failed:', err)
       }
-    };
-    
+    }
+
     loadData().catch((err) => {
-      console.error("Failed to load habitat data:", err);
-    });
-  }, []);
+      console.error('Failed to load habitat data:', err)
+    })
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
+      const target = event.target as HTMLElement
 
       if (!target.closest('.species-filter')) {
-        setSpeciesDropdownOpen(false);
+        setSpeciesDropdownOpen(false)
       }
-    };
+    }
 
     if (speciesDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [speciesDropdownOpen]);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [speciesDropdownOpen])
 
   useEffect(() => {
-    if (!selectedCounty || selectedCounty === "") {
+    if (!selectedCounty || selectedCounty === '') {
       if (mapRef.current) {
-        mapRef.current.setView([53.35, -7.5], 8);
+        mapRef.current.setView([53.35, -7.5], 8)
       }
     }
-  }, [selectedCounty]);
+  }, [selectedCounty])
 
   useEffect(() => {
-    const prev = prevZoomRef.current;
+    const prev = prevZoomRef.current
 
     if (prev < 11 && currentZoom >= 11) {
-      console.log("Crossed into polygon view - triggering pulse");
+      console.log('Crossed into polygon view - triggering pulse')
 
       setTimeout(() => {
-        setShouldPulse(true);
+        setShouldPulse(true)
 
         setTimeout(() => {
-          setShouldPulse(false);
-        }, 2000);
-      }, POLYGON_PULSE_DELAY);
+          setShouldPulse(false)
+        }, 2000)
+      }, POLYGON_PULSE_DELAY)
     }
 
-    prevZoomRef.current = currentZoom;
-  }, [currentZoom]);
+    prevZoomRef.current = currentZoom
+  }, [currentZoom])
 
   const filteredHabitats = useMemo(() => {
-    if (!habitats) return null;
+    if (!habitats) return null
 
-    let filtered = habitats.features;
+    let filtered = habitats.features
 
-    if (!selectedCounty || selectedCounty === "") {
+    if (!selectedCounty || selectedCounty === '') {
       return {
         ...habitats,
         features: [],
-      };
+      }
     }
 
-    if (selectedCounty !== "All") {
+    if (selectedCounty !== 'All') {
       filtered = filtered.filter((f) => {
-        const county = f.properties.COUNTY;
-        if (Array.isArray(county)) return county.includes(selectedCounty);
-        return county === selectedCounty;
-      });
+        const county = f.properties.COUNTY
+        if (Array.isArray(county)) return county.includes(selectedCounty)
+        return county === selectedCounty
+      })
     }
 
-    if (
-      selectedSpecies.length > 0 &&
-      selectedSpecies.length < availableSpecies.length
-    ) {
+    if (selectedSpecies.length > 0 && selectedSpecies.length < availableSpecies.length) {
       filtered = filtered.filter((f) => {
-        const genus = f.properties._genus;
-        return genus && selectedSpecies.includes(genus);
-      });
+        const genus = f.properties._genus
+        return genus && selectedSpecies.includes(genus)
+      })
     }
 
     return {
       ...habitats,
       features: filtered,
-    };
-  }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
+    }
+  }, [habitats, selectedCounty, selectedSpecies, availableSpecies])
 
   const toggleSpecies = (genus: string) => {
     setSelectedSpecies((prev) => {
       if (prev.includes(genus) && prev.length === 1) {
-        return prev;
+        return prev
       }
 
-      return prev.includes(genus)
-        ? prev.filter((s) => s !== genus)
-        : [...prev, genus];
-    });
-  };
+      return prev.includes(genus) ? prev.filter((s) => s !== genus) : [...prev, genus]
+    })
+  }
 
   const toggleAllSpecies = () => {
     if (selectedSpecies.length === availableSpecies.length) {
-      setSelectedSpecies([availableSpecies[0]]);
+      setSelectedSpecies([availableSpecies[0]])
     } else {
-      setSelectedSpecies([...availableSpecies]);
+      setSelectedSpecies([...availableSpecies])
     }
-  };
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.drag-handle')) {
-      e.preventDefault();
-      e.stopPropagation();
-      
+      e.preventDefault()
+      e.stopPropagation()
+
       // Disable Leaflet dragging
       if (mapRef.current) {
-        mapRef.current.dragging.disable();
+        mapRef.current.dragging.disable()
       }
-      
-      setIsDragging(true);
+
+      setIsDragging(true)
       setDragOffset({
         x: e.clientX - panelPosition.x,
-        y: e.clientY - panelPosition.y
-      });
+        y: e.clientY - panelPosition.y,
+      })
     }
-  };
+  }
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      e.preventDefault();
-      e.stopPropagation();
-      setPanelPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      });
-    }
-  };
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isDragging) {
+        e.preventDefault()
+        e.stopPropagation()
+        setPanelPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y,
+        })
+      }
+    },
+    [isDragging, dragOffset]
+  )
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isDragging) {
       // Re-enable Leaflet dragging
       if (mapRef.current) {
-        mapRef.current.dragging.enable();
+        mapRef.current.dragging.enable()
       }
+      setIsDragging(false)
     }
-    setIsDragging(false);
-  };
+  }, [isDragging])
+
   const handlePanelMouseEnter = () => {
     if (mapRef.current) {
-      mapRef.current.dragging.disable();
+      mapRef.current.dragging.disable()
     }
-  };
+  }
 
   const handlePanelMouseLeave = () => {
     if (mapRef.current && !isDragging) {
-      mapRef.current.dragging.enable();
+      mapRef.current.dragging.enable()
     }
-  };
+  }
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
     }
-    
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset]);
 
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragOffset, handleMouseMove, handleMouseUp])
 
   return (
     <>
       {!habitats && (
         <div className="loading-overlay">
           <div className="loading-spinner" />
-          <div className="loading-text">
-            Converting coordinates...
-          </div>
+          <div className="loading-text">Converting coordinates...</div>
         </div>
       )}
 
@@ -256,32 +251,32 @@ function App() {
           key={baseLayer}
         />
 
-          <div 
-            className="map-controls-left leaflet-control"
-            style={{ 
-              left: `${panelPosition.x}px`, 
-              top: `${panelPosition.y}px` 
+        <div
+          className="map-controls-left leaflet-control"
+          style={{
+            left: `${panelPosition.x}px`,
+            top: `${panelPosition.y}px`,
+          }}
+        >
+          <div
+            className="control-panel"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => {
+              if (!(e.target as HTMLElement).closest('.drag-handle')) {
+                e.stopPropagation()
+              }
             }}
+            onMouseEnter={handlePanelMouseEnter}
+            onMouseLeave={handlePanelMouseLeave}
           >
-            <div 
-              className="control-panel"
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => {
-                if (!(e.target as HTMLElement).closest('.drag-handle')) {
-                  e.stopPropagation();
-                }
-              }}
-              onMouseEnter={handlePanelMouseEnter}
-              onMouseLeave={handlePanelMouseLeave}
+            <div
+              className="drag-handle leaflet-drag-target"
+              onMouseDown={handleMouseDown}
+              onDoubleClick={(e) => e.stopPropagation()}
             >
-             <div 
-                className="drag-handle leaflet-drag-target"
-                onMouseDown={handleMouseDown}
-                onDoubleClick={(e) => e.stopPropagation()}
-              >
-                <div className="drag-dots"></div>
-                <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
-              </div>
+              <div className="drag-dots"></div>
+              <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
+            </div>
 
             <div className="control-section">
               <label htmlFor="county-select">County</label>
@@ -299,7 +294,7 @@ function App() {
               </select>
             </div>
 
-            {!selectedCounty || selectedCounty === "" ? (
+            {!selectedCounty || selectedCounty === '' ? (
               <div className="info-text">Select a county to view sites</div>
             ) : (
               <div className="site-count-badge">
@@ -343,15 +338,11 @@ function App() {
             </div>
 
             {selectedCounty &&
-              selectedCounty !== "" &&
+              selectedCounty !== '' &&
               currentZoom >= 11 &&
               (filteredHabitats?.features?.length ?? 0) > 0 && (
-                <button
-                  className="highlight-btn-full"
-                  onClick={flash}
-                  disabled={isFlashing}
-                >
-                  {isFlashing ? "Highlighting..." : "💡 Highlight All Sites"}
+                <button className="highlight-btn-full" onClick={flash} disabled={isFlashing}>
+                  {isFlashing ? 'Highlighting...' : '💡 Highlight All Sites'}
                 </button>
               )}
           </div>
@@ -359,20 +350,17 @@ function App() {
 
         <MapRefCapture mapRef={mapRef} />
         <ZoomTracker setCurrentZoom={setCurrentZoom} />
-        <CountyZoomer
-          filteredHabitats={filteredHabitats}
-          selectedCounty={selectedCounty}
-        />
+        <CountyZoomer filteredHabitats={filteredHabitats} selectedCounty={selectedCounty} />
 
         <MarkerClusterGroup
-          key={`cluster-${selectedSpecies.join(",")}`}
+          key={`cluster-${selectedSpecies.join(',')}`}
           chunkedLoading
           maxClusterRadius={50}
           spiderfyOnMaxZoom={true}
           showCoverageOnHover={false}
           iconCreateFunction={(cluster: MarkerClusterType) => {
-            const count = cluster.getChildCount();
-            const size = count < 10 ? 34 : count < 100 ? 38 : 42;
+            const count = cluster.getChildCount()
+            const size = count < 10 ? 34 : count < 100 ? 38 : 42
 
             return L.divIcon({
               html: `
@@ -380,9 +368,9 @@ function App() {
                   <span class="cluster-count">${count}</span>
                 </div>
               `,
-              className: "custom-cluster",
+              className: 'custom-cluster',
               iconSize: [size, size],
-            });
+            })
           }}
         >
           <HabitatMarkers
@@ -392,52 +380,48 @@ function App() {
           />
         </MarkerClusterGroup>
 
-
         {currentZoom >= 11 && filteredHabitats && (
           <GeoJSON
             ref={geoJsonRef}
-            key={`habitats-${selectedCounty}-${selectedSpecies.join(",")}-${
-              shouldPulse ? "pulse" : "normal"
+            key={`habitats-${selectedCounty}-${selectedSpecies.join(',')}-${
+              shouldPulse ? 'pulse' : 'normal'
             }`}
             data={filteredHabitats}
             style={(feature) => deriveStyleFeature(shouldPulse, feature as HabitatFeature)}
             onEachFeature={(feature, layer) => {
               // Type guard to ensure it's a Path layer (has setStyle)
-              if (!("setStyle" in layer)) return;
-              
-              const pathLayer = layer as L.Path;
-              
+              if (!('setStyle' in layer)) return
+
+              const pathLayer = layer as L.Path
+
               pathLayer.on({
                 mouseover: () => {
                   pathLayer.setStyle({
                     weight: 3,
                     fillOpacity: 0.7,
-                  });
+                  })
                 },
                 mouseout: () => {
                   pathLayer.setStyle({
                     weight: 1.5,
                     fillOpacity: 0.5,
-                  });
+                  })
                 },
-              });
+              })
 
-              const popupElement = document.createElement("div");
-              const root = createRoot(popupElement);
+              const popupElement = document.createElement('div')
+              const root = createRoot(popupElement)
               root.render(
-                <DetailedPopupCard 
-                  feature={feature as HabitatFeature} 
-                  speciesInfo={speciesInfo} 
-                />
-              );
+                <DetailedPopupCard feature={feature as HabitatFeature} speciesInfo={speciesInfo} />
+              )
 
-              pathLayer.bindPopup(popupElement);
+              pathLayer.bindPopup(popupElement)
             }}
           />
         )}
       </MapContainer>
     </>
-  );
+  )
 }
 
-export default App;
+export default App

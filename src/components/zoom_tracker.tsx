@@ -1,31 +1,31 @@
-import { useEffect } from "react";
-import { useMap } from "react-leaflet";
+import { useEffect } from 'react'
+import { useMap } from 'react-leaflet'
 
-type Props = {
+interface Props {
   setCurrentZoom: (zoom: number) => void
 }
 
 export function ZoomTracker({ setCurrentZoom }: Props) {
-  const map = useMap();
+  const map = useMap()
 
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId: ReturnType<typeof setTimeout>
 
     const handleZoom = () => {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
       timeoutId = setTimeout(() => {
-        setCurrentZoom(map.getZoom());
-      }, 150);
-    };
+        setCurrentZoom(map.getZoom())
+      }, 150)
+    }
 
-    map.on("zoomend", handleZoom);
+    map.on('zoomend', handleZoom)
     return () => {
-      clearTimeout(timeoutId);
-      map.off("zoomend", handleZoom);
-    };
-  }, [map, setCurrentZoom]);
+      clearTimeout(timeoutId)
+      map.off('zoomend', handleZoom)
+    }
+  }, [map, setCurrentZoom])
 
-  return null;
+  return null
 }
 
-export default ZoomTracker;
+export default ZoomTracker

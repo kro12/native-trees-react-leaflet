@@ -22,6 +22,8 @@ import DetailedPopupCard from './components/detailed_popup_card'
 import SpeciesFilter from './components/species_filter'
 import MapRefCapture from './components/map_ref_capture'
 import HabitatMarkers from './components/habitat_markers'
+import { useContextMenu } from './hooks/useContextMenu'
+import ContextMenu from './components/context_menu'
 import { useFlashPolygons } from './hooks/useFlashPolygons'
 
 function App() {
@@ -41,6 +43,7 @@ function App() {
   const geoJsonRef = useRef<L.GeoJSON>(null)
 
   const { flash, isFlashing } = useFlashPolygons(geoJsonRef)
+  const { menuPosition, handleContextMenu, closeMenu } = useContextMenu()
 
   // Species filter state
   const [availableSpecies, setAvailableSpecies] = useState<string[]>([])
@@ -416,10 +419,22 @@ function App() {
               )
 
               pathLayer.bindPopup(popupElement)
+              layer.on({
+                contextmenu: handleContextMenu,
+              })
             }}
           />
         )}
       </MapContainer>
+      {menuPosition && (
+        <ContextMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          lat={menuPosition.lat}
+          lng={menuPosition.lng}
+          onClose={closeMenu}
+        />
+      )}
     </>
   )
 }

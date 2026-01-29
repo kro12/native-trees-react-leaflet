@@ -363,10 +363,11 @@ textarea {
    ========================= */
 .map-controls-left {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  /* Remove top: 10px; left: 10px; - now controlled by inline style */
   z-index: 1000;
   max-width: 320px;
+  transition: none; /* Prevent transitions during drag */
+  pointer-events: none; /* Let map events pass through the container */
 }
 
 .control-panel {
@@ -377,6 +378,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  pointer-events: auto; /* Ensure panel captures events */
 }
 
 .panel-title {
@@ -527,4 +529,45 @@ textarea {
   color: #000;
   text-align: left;
   margin-top: 4px;
+}
+
+/* Draggable controls */
+/* Drag handle */
+.drag-handle {
+  cursor: move;
+  padding: 12px 16px 8px 16px;
+  margin: -16px -16px 12px -16px;
+  border-bottom: 2px solid #f59e0b;
+  background: linear-gradient(to bottom, #fffbeb, #ffffff);
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  position: relative;
+  z-index: 10000; /* High z-index to be above Leaflet layers */
+  touch-action: none; /* Prevent touch scrolling */
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-dots {
+  width: 20px;
+  height: 12px;
+  background-image: radial-gradient(circle, #9ca3af 2px, transparent 2px);
+  background-size: 6px 6px;
+  background-position: 0 0, 6px 6px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  padding-bottom: 0;
+  border-bottom: none;
 }

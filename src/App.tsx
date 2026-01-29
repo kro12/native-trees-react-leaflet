@@ -39,6 +39,10 @@ function App() {
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
   const [isFlashing, _] = useState(false);
   const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>("satellite");
+  const [panelPosition, setPanelPosition] = useState({ x: 10, y: 10 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
 
   const prevZoomRef = useRef<number>(8);
   const mapRef = useRef<L.Map | null>(null);
@@ -164,7 +168,7 @@ function App() {
       gj.eachLayer((layer) => {
         if ("setStyle" in layer) {
           (layer as L.Path).setStyle({
-            weight: 7,
+            weight: 5,
             opacity: 1,
             fillOpacity: 0.75,
             color: "#ffffff",
@@ -308,6 +312,71 @@ function App() {
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.drag-handle')) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Disable Leaflet dragging
+      if (mapRef.current) {
+        mapRef.current.dragging.disable();
+      }
+      
+      setIsDragging(true);
+      setDragOffset({
+        x: e.clientX - panelPosition.x,
+        y: e.clientY - panelPosition.y
+      });
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      setPanelPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      // Re-enable Leaflet dragging
+      if (mapRef.current) {
+        mapRef.current.dragging.enable();
+      }
+    }
+    setIsDragging(false);
+  };
+  const handlePanelMouseEnter = () => {
+    if (mapRef.current) {
+      mapRef.current.dragging.disable();
+    }
+  };
+
+  const handlePanelMouseLeave = () => {
+    if (mapRef.current && !isDragging) {
+      mapRef.current.dragging.enable();
+    }
+  };
+
+
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+
   return (
     <>
       {!habitats && (
@@ -355,9 +424,32 @@ function App() {
           key={baseLayer}
         />
 
-        <div className="map-controls-left">
-          <div className="control-panel">
-            <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
+          <div 
+            className="map-controls-left leaflet-control"
+            style={{ 
+              left: `${panelPosition.x}px`, 
+              top: `${panelPosition.y}px` 
+            }}
+          >
+            <div 
+              className="control-panel"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => {
+                if (!(e.target as HTMLElement).closest('.drag-handle')) {
+                  e.stopPropagation();
+                }
+              }}
+              onMouseEnter={handlePanelMouseEnter}
+              onMouseLeave={handlePanelMouseLeave}
+            >
+             <div 
+                className="drag-handle leaflet-drag-target"
+                onMouseDown={handleMouseDown}
+                onDoubleClick={(e) => e.stopPropagation()}
+              >
+                <div className="drag-dots"></div>
+                <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
+              </div>
 
             <div className="control-section">
               <label htmlFor="county-select">County</label>

@@ -39,7 +39,7 @@ function App() {
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
   const [isFlashing, _] = useState(false);
   const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>("satellite");
-  const [panelPosition, setPanelPosition] = useState({ x: 10, y: 10 });
+  const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 

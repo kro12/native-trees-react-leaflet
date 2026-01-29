@@ -1,36 +1,35 @@
 import { speciesMap, darkerShadeColourMap, treeColors } from "./constants";
 import type { Feature, Position } from 'geojson'
-
 import proj4 from "proj4";
+
 // Irish Grid projection
 proj4.defs(
   "EPSG:29903",
   "+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 +ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs"
 );
 
-function cleanTreeSpecies (raw: string[]): string[] {
+const cleanTreeSpecies = (raw: string[]): string[] => {
   if (!raw || !Array.isArray(raw)) return [];
-
+  
   return raw
     .filter((s) => s && !s.includes("Not Determined"))
     .flatMap((s) => {
       const trimmed = s.trim();
-
+      
       // First try exact match in speciesMap
       if (speciesMap[trimmed]) {
         return [speciesMap[trimmed]];
       }
-
+      
       // Split compound descriptions (e.g., "Fraxinus excelsior - Hedera helix")
       const parts = trimmed.split(/\s*[-/]\s*/).filter(Boolean);
-
       for (const part of parts) {
         const partTrimmed = part.trim();
         if (speciesMap[partTrimmed]) {
           return [speciesMap[partTrimmed]];
         }
       }
-
+      
       // If no map match, try to find genus match
       for (const [key, value] of Object.entries(speciesMap)) {
         if (key.length <= 2) continue; // Skip abbreviations
@@ -38,33 +37,31 @@ function cleanTreeSpecies (raw: string[]): string[] {
           return [value];
         }
       }
-
+      
       return [trimmed]; // Return as-is if no match found
     })
     .filter(Boolean);
-}
+};
 
-function convertCoord(coord: Position): Position {
+const convertCoord = (coord: Position): Position => {
   try {
     return proj4("EPSG:29903", "EPSG:4326", coord);
   } catch (e) {
     console.error("Conversion failed:", coord, e);
     return coord;
   }
-}
+};
 
 type HabitatFeature = {
   properties: {
     COUNTY: string | string[]
   }
-
 }
 
-function reprojectFeature(feature: Feature): Feature {
+const reprojectFeature = (feature: Feature): Feature => {
   const geom = feature.geometry;
-
   if (!geom) return feature;
-
+  
   if (geom.type === "Point") {
     geom.coordinates = convertCoord(geom.coordinates);
   } else if (geom.type === "Polygon") {
@@ -76,56 +73,57 @@ function reprojectFeature(feature: Feature): Feature {
       polygon.map((ring) => ring.map((coord) => convertCoord(coord)))
     );
   }
-
+  
   return feature;
-}
+};
 
 // Helper to get genus from species name
-function getGenusFromSpecies(speciesName: string) {
+const getGenusFromSpecies = (speciesName: string) => {
   if (!speciesName || speciesName === "Unknown") return null;
-
+  
   for (const genus of Object.keys(treeColors)) {
     if (speciesName.includes(genus)) {
       return genus;
     }
   }
+  
   return null;
-}
+};
 
-function getColorForSpecies(speciesName: string) {
+const getColorForSpecies = (speciesName: string) => {
   if (!speciesName || speciesName === "Unknown") return "#808080";
-
+  
   for (const [genus, color] of Object.entries(treeColors)) {
     if (speciesName.includes(genus)) {
       return color;
     }
   }
-
+  
   return "#808080";
-}
+};
 
-function getDarkerShade(color: string) {
+const getDarkerShade = (color: string) => {
   return darkerShadeColourMap[color] || "#333333";
-}
+};
 
-function getCentroid(coordinates: Position[][]) {
+const getCentroid = (coordinates: Position[][]) => {
   const ring = coordinates[0];
   let latSum = 0;
   let lonSum = 0;
-
+  
   ring.forEach((coord) => {
     lonSum += coord[0];
     latSum += coord[1];
   });
-
+  
   return [latSum / ring.length, lonSum / ring.length];
-}
+};
 
 export type HabitatsData = {
   features?: HabitatFeature[]
 }
 
-function deriveCounties(habitatsData: HabitatsData): string[] {
+const deriveCounties = (habitatsData: HabitatsData): string[] => {
   return (
     habitatsData.features
       ?.map((f) => {
@@ -137,9 +135,7 @@ function deriveCounties(habitatsData: HabitatsData): string[] {
       .filter((c, i, self) => self.indexOf(c) === i)
       .sort() || []
   );
-}
-
-// function transformHabitatData() {}
+};
 
 export {
   cleanTreeSpecies,

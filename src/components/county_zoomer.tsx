@@ -3,12 +3,12 @@ import { useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Feature } from "geojson";
 
-type Props = {
+interface Props {
   filteredHabitats: {
     features: Feature[]
   } | null;
   selectedCounty: string;
-};
+}
 
 function CountyZoomer({ filteredHabitats, selectedCounty }: Props) {
   const map = useMap();

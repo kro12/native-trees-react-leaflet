@@ -1,36 +1,32 @@
-import { useState, useEffect, useMemo, useRef, type JSX } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MapContainer,
   TileLayer,
   GeoJSON,
-  CircleMarker,
-  Popup,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import {
   speciesInfo,
-  POLYGON_PULSE_DELAY,
   titleLayers,
-  type TileLayersMap, type HabitatFeature, type HabitatCollection,
+  POLYGON_PULSE_DELAY,
+  DEFAULT_MAP_COORDS,
+  type TileLayersMap, type HabitatFeature, type HabitatCollection, type MarkerClusterType
 } from "./constants";
 import {
-  cleanTreeSpecies,
-  deriveCounties,
-  reprojectFeature,
-  getCentroid,
-  getColorForSpecies,
-  getDarkerShade,
-  getGenusFromSpecies,
   loadHabitatData,
+  deriveStyleFeature,
 } from "./utils";
+
 import "leaflet/dist/leaflet.css";
 import CountyZoomer from "./components/county_zoomer";
 import ZoomTracker from "./components/zoom_tracker";
 import DetailedPopupCard from "./components/detailed_popup_card";
 import SpeciesFilter from "./components/species_filter";
 import MapRefCapture from "./components/map_ref_capture";
+import HabitatMarkers from "./components/habitat_markers";
+import { useFlashPolygons } from './hooks/useFlashPolygons';
 
 function App() {
   const [habitats, setHabitats] = useState<HabitatCollection | null>(null);
@@ -38,7 +34,7 @@ function App() {
   const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [currentZoom, setCurrentZoom] = useState<number>(8);
   const [shouldPulse, setShouldPulse] = useState<boolean>(false);
-  const [isFlashing, _] = useState(false);
+
   const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>("satellite");
   const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
@@ -47,7 +43,9 @@ function App() {
 
   const prevZoomRef = useRef<number>(8);
   const mapRef = useRef<L.Map | null>(null);
-  const geoJsonRef = useRef<L.GeoJSON | null>(null);
+  const geoJsonRef = useRef<L.GeoJSON>(null);
+
+  const { flash, isFlashing } = useFlashPolygons(geoJsonRef)
 
   // Species filter state
   const [availableSpecies, setAvailableSpecies] = useState<string[]>([]);
@@ -66,7 +64,10 @@ function App() {
         console.error("Load failed:", err);
       }
     };
-    loadData();
+    
+    loadData().catch((err) => {
+      console.error("Failed to load habitat data:", err);
+    });
   }, []);
 
   useEffect(() => {
@@ -113,64 +114,6 @@ function App() {
     prevZoomRef.current = currentZoom;
   }, [currentZoom]);
 
-  const flashPolygons = () => {
-    const gj = geoJsonRef.current;
-    if (!gj) return;
-
-    const flashes = 3;
-    const onMs = 250;
-    const offMs = 200;
-
-    const originals = new Map<L.Layer, L.PathOptions>();
-
-    gj.eachLayer((layer) => {
-      if ("setStyle" in layer) {
-        const path = layer as L.Path;
-        originals.set(layer, { ...(path.options as L.PathOptions) });
-      }
-    });
-
-    let i = 0;
-
-    const flashOn = () => {
-      gj.eachLayer((layer) => {
-        if ("setStyle" in layer) {
-          (layer as L.Path).setStyle({
-            weight: 5,
-            opacity: 1,
-            fillOpacity: 0.75,
-            color: "#ffffff",
-          });
-          (layer as any).bringToFront?.();
-        }
-      });
-    };
-
-    const flashOff = () => {
-      gj.eachLayer((layer) => {
-        if ("setStyle" in layer) {
-          const original = originals.get(layer);
-          if (original) (layer as L.Path).setStyle(original);
-        }
-      });
-    };
-
-    const run = () => {
-      if (i >= flashes) {
-        flashOff();
-        return;
-      }
-      flashOn();
-      window.setTimeout(() => {
-        flashOff();
-        i += 1;
-        window.setTimeout(run, offMs);
-      }, onMs);
-    };
-
-    run();
-  };
-
   const filteredHabitats = useMemo(() => {
     if (!habitats) return null;
 
@@ -206,52 +149,6 @@ function App() {
       features: filtered,
     };
   }, [habitats, selectedCounty, selectedSpecies, availableSpecies]);
-
-  const styleFeature = (feature?: HabitatFeature): L.PathOptions => {
-    if (!feature) return { fillColor: "#808080", weight: 1, opacity: 0.5 };
-
-    const species = feature.properties.cleanedSpecies || "Unknown";
-    const color = getColorForSpecies(species);
-    const borderColor = getDarkerShade(color);
-
-    return {
-      fillColor: color,
-      weight: 1.5,
-      opacity: 0.9,
-      color: borderColor,
-      fillOpacity: 0.5,
-      className: shouldPulse ? "pulse-polygon" : "",
-    };
-  };
-
-  const clusterMarkers = useMemo<JSX.Element[] | null>(() => {
-    if (!filteredHabitats || currentZoom >= 11) return null;
-
-    return filteredHabitats.features.map((feature, idx) => {
-      const centroid = feature.properties._centroid;
-      const color = getColorForSpecies(
-        feature.properties.cleanedSpecies || "Unknown"
-      );
-
-      return (
-        <CircleMarker
-          key={`marker-${
-            feature.properties.SITE_NAME || idx
-          }-${selectedSpecies.join(",")}`}
-          center={centroid as [number, number]}
-          radius={6}
-          fillColor={color}
-          color="#000"
-          weight={1}
-          fillOpacity={0.8}
-        >
-          <Popup>
-            <DetailedPopupCard feature={feature} speciesInfo={speciesInfo} />
-          </Popup>
-        </CircleMarker>
-      );
-    });
-  }, [filteredHabitats, currentZoom, selectedSpecies]);
 
   const toggleSpecies = (genus: string) => {
     setSelectedSpecies((prev) => {
@@ -323,8 +220,6 @@ function App() {
     }
   };
 
-
-
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -350,7 +245,7 @@ function App() {
       )}
 
       <MapContainer
-        center={[53.35, -7.5]}
+        center={DEFAULT_MAP_COORDS}
         zoom={8}
         className="map-container"
         scrollWheelZoom={true}
@@ -408,7 +303,7 @@ function App() {
               <div className="info-text">Select a county to view sites</div>
             ) : (
               <div className="site-count-badge">
-                {filteredHabitats?.features?.length || 0} sites found
+                {filteredHabitats?.features?.length ?? 0} sites found
               </div>
             )}
 
@@ -450,10 +345,10 @@ function App() {
             {selectedCounty &&
               selectedCounty !== "" &&
               currentZoom >= 11 &&
-              (filteredHabitats?.features?.length || 0) > 0 && (
+              (filteredHabitats?.features?.length ?? 0) > 0 && (
                 <button
                   className="highlight-btn-full"
-                  onClick={flashPolygons}
+                  onClick={flash}
                   disabled={isFlashing}
                 >
                   {isFlashing ? "Highlighting..." : "💡 Highlight All Sites"}
@@ -469,31 +364,34 @@ function App() {
           selectedCounty={selectedCounty}
         />
 
-        {currentZoom < 11 && clusterMarkers && (
-          <MarkerClusterGroup
-            key={`cluster-${selectedSpecies.join(",")}`}
-            chunkedLoading
-            maxClusterRadius={50}
-            spiderfyOnMaxZoom={true}
-            showCoverageOnHover={false}
-            iconCreateFunction={(cluster: any) => {
-              const count = cluster.getChildCount();
-              const size = count < 10 ? 34 : count < 100 ? 38 : 42;
+        <MarkerClusterGroup
+          key={`cluster-${selectedSpecies.join(",")}`}
+          chunkedLoading
+          maxClusterRadius={50}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={false}
+          iconCreateFunction={(cluster: MarkerClusterType) => {
+            const count = cluster.getChildCount();
+            const size = count < 10 ? 34 : count < 100 ? 38 : 42;
 
-              return L.divIcon({
-                html: `
-                  <div class="cluster-bubble cluster-bubble--countonly" style="width:${size}px;height:${size}px">
-                    <span class="cluster-count">${count}</span>
-                  </div>
-                `,
-                className: "custom-cluster",
-                iconSize: [size, size],
-              });
-            }}
-          >
-            {clusterMarkers}
-          </MarkerClusterGroup>
-        )}
+            return L.divIcon({
+              html: `
+                <div class="cluster-bubble cluster-bubble--countonly" style="width:${size}px;height:${size}px">
+                  <span class="cluster-count">${count}</span>
+                </div>
+              `,
+              className: "custom-cluster",
+              iconSize: [size, size],
+            });
+          }}
+        >
+          <HabitatMarkers
+            filteredHabitats={filteredHabitats}
+            currentZoom={currentZoom}
+            selectedSpecies={selectedSpecies}
+          />
+        </MarkerClusterGroup>
+
 
         {currentZoom >= 11 && filteredHabitats && (
           <GeoJSON
@@ -502,19 +400,22 @@ function App() {
               shouldPulse ? "pulse" : "normal"
             }`}
             data={filteredHabitats}
-            style={styleFeature}
+            style={(feature) => deriveStyleFeature(shouldPulse, feature as HabitatFeature)}
             onEachFeature={(feature, layer) => {
-              layer.on({
-                mouseover: (e) => {
-                  const layer = e.target;
-                  layer.setStyle({
+              // Type guard to ensure it's a Path layer (has setStyle)
+              if (!("setStyle" in layer)) return;
+              
+              const pathLayer = layer as L.Path;
+              
+              pathLayer.on({
+                mouseover: () => {
+                  pathLayer.setStyle({
                     weight: 3,
                     fillOpacity: 0.7,
                   });
                 },
-                mouseout: (e) => {
-                  const layer = e.target;
-                  layer.setStyle({
+                mouseout: () => {
+                  pathLayer.setStyle({
                     weight: 1.5,
                     fillOpacity: 0.5,
                   });
@@ -524,13 +425,13 @@ function App() {
               const popupElement = document.createElement("div");
               const root = createRoot(popupElement);
               root.render(
-                <DetailedPopupCard
-                  feature={feature}
-                  speciesInfo={speciesInfo}
+                <DetailedPopupCard 
+                  feature={feature as HabitatFeature} 
+                  speciesInfo={speciesInfo} 
                 />
               );
 
-              layer.bindPopup(popupElement);
+              pathLayer.bindPopup(popupElement);
             }}
           />
         )}

@@ -1,22 +1,22 @@
-import type { Feature } from 'geojson'
+import type { Feature, Geometry } from "geojson";
 import type { SpeciesInfo } from '../constants'
 import { getColorForSpecies } from "../utils"
 
-type HabitatProperties = {
+interface HabitatProperties {
   cleanedSpecies?: string
-  _genus: string | null;  // <--- Change from just 'string'
+  _genus: string | null;
   COUNTY: string | string[]
   SITE_NAME?: string
   AREA: number
 }
 
-type Props = {
-  feature: Feature<any, HabitatProperties>
+interface Props {
+  feature: Feature<Geometry, HabitatProperties>
   speciesInfo: Record<string, SpeciesInfo>
 }
 
 const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
-  const species = feature.properties.cleanedSpecies || "Unknown"
+  const species = feature.properties.cleanedSpecies ?? "Unknown"
   const color = getColorForSpecies(species)
   const genus = feature.properties._genus
   const info = genus ? speciesInfo[genus] : undefined
@@ -28,7 +28,7 @@ const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
   return (
     <div style={{ fontFamily: "sans-serif", minWidth: "280px" }}>
       <h3 style={{ margin: "0 0 12px 0", fontSize: "18px" }}>
-        {feature.properties.SITE_NAME || "NSNW Site"}
+        {feature.properties.SITE_NAME ?? "NSNW Site"}
       </h3>
 
       {info && (

@@ -52,11 +52,6 @@ const convertCoord = (coord: Position): Position => {
   }
 };
 
-// type HabitatFeature = {
-//   properties: {
-//     COUNTY: string | string[]
-//   }
-// }
 
 const reprojectFeature = (feature: Feature): Feature => {
   const geom = feature.geometry;
@@ -119,7 +114,7 @@ const getCentroid = (coordinates: Position[][]) => {
   return [latSum / ring.length, lonSum / ring.length];
 };
 
-export type HabitatsData = {
+export interface HabitatsData {
   features?: HabitatFeature[]
 }
 
@@ -133,7 +128,7 @@ const deriveCounties = (habitatsData: HabitatsData): string[] => {
       .flat()
       .filter(Boolean)
       .filter((c, i, self) => self.indexOf(c) === i)
-      .sort() || []
+      .sort() ?? []
   );
 };
 
@@ -145,15 +140,25 @@ export const loadHabitatData = async (): Promise<{
   const habitatsRes = await fetch("/data/NSNW_Woodland_Habitats_2010.json");
   if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`);
 
-  const habitatsData: HabitatCollection = await habitatsRes.json();
+  const data = await habitatsRes.json() as unknown;
+
+  // Validate it's the right shape
+  if (!data || typeof data !== 'object' || !('features' in data)) {
+    throw new Error('Invalid habitat data format');
+  }
+
+  const habitatsData = data as HabitatCollection;
   console.log("Loaded:", habitatsData.features?.length, "polygons");
+  const geometryTypes = new Set(habitatsData.features.map(f => f.geometry.type));
+console.log('Geometry types found:', Array.from(geometryTypes));
+
 
   console.log("Converting ITM → WGS84...");
   habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
 
   habitatsData.features?.forEach((f) => {
-    const raw = f.properties.NS_SPECIES || f.properties.NSNW_DESC || "";
-    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] || "Unknown";
+    const raw = f.properties.NS_SPECIES ?? f.properties.NSNW_DESC ?? "";
+    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] ?? "Unknown";
     f.properties._centroid = getCentroid(f.geometry.coordinates);
     f.properties._genus = getGenusFromSpecies(
       f.properties.cleanedSpecies
@@ -182,6 +187,23 @@ export const loadHabitatData = async (): Promise<{
   };
 };
 
+const deriveStyleFeature = (shouldPulse: boolean, feature?: HabitatFeature): L.PathOptions => {
+  if (!feature) return { fillColor: "#808080", weight: 1, opacity: 0.5 };
+
+  const species = feature.properties.cleanedSpecies || "Unknown";
+  const color = getColorForSpecies(species);
+  const borderColor = getDarkerShade(color);
+
+  return {
+    fillColor: color,
+    weight: 1.5,
+    opacity: 0.9,
+    color: borderColor,
+    fillOpacity: 0.5,
+    className: shouldPulse ? "pulse-polygon" : "",
+  };
+}
+
 export {
   cleanTreeSpecies,
   reprojectFeature,
@@ -190,4 +212,5 @@ export {
   getDarkerShade,
   getCentroid,
   deriveCounties,
+  deriveStyleFeature,
 };

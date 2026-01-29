@@ -1,6 +1,6 @@
 import { treeColors, genusDisplayNames } from "../constants";
 
-type Props = {
+interface Props {
     selectedSpecies: string[]
     availableSpecies: string[]
     speciesDropdownOpen: boolean

@@ -1,4 +1,15 @@
-import type { Feature, FeatureCollection, Position } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  Position,
+  Polygon, // all our Tree data is in Polygon form
+} from "geojson";
+/*
+ * Logged the data structure using...
+ * const geometryTypes = new Set(habitatsData.features.map(f => f.geometry.type));
+ * console.log('Geometry types found:', Array.from(geometryTypes));
+ */
+import { type LatLngTuple } from 'leaflet';
 
 export type TreeGenus = "Quercus" | "Fraxinus" | "Betula" | "Alnus" | "Corylus" | "Salix" | "Pinus" | "Ilex"
 
@@ -43,7 +54,7 @@ const speciesMap: Record<string,string> = {
   "Salix cinerea - Galium": "Salix cinerea",
 };
 
-export type SpeciesInfo = {
+export interface SpeciesInfo {
   image: string
   description: string
 }
@@ -127,14 +138,15 @@ const darkerShadeColourMap: Record<string,string> = {
 
 // ms delay before pulsing polygons
 const POLYGON_PULSE_DELAY = 100
+const DEFAULT_MAP_COORDS: LatLngTuple = [53.35, -7.5]
 
-type TitleLayerConfig = {
+interface TitleLayerConfig {
   url: string
   attribution: string
   label: string
 }
 
-type TileLayersMap = {
+interface TileLayersMap {
   street: TitleLayerConfig
   satellite: TitleLayerConfig
   terrain: TitleLayerConfig
@@ -160,7 +172,7 @@ const titleLayers: TileLayersMap = {
 };
 
 // Define the shape of habitat properties
-type HabitatProperties = {
+interface HabitatProperties {
   NS_SPECIES?: string;
   NSNW_DESC?: string;
   COUNTY: string | string[];
@@ -169,13 +181,17 @@ type HabitatProperties = {
   cleanedSpecies: string;
   _centroid: Position;
   _genus: string | null;
-};
+}
 
 // Define the habitat feature type
-type HabitatFeature = Feature<any, HabitatProperties>;
+type HabitatFeature = Feature<Polygon, HabitatProperties>;
 
 // Define the habitat collection type
-type HabitatCollection = FeatureCollection<any, HabitatProperties>;
+type HabitatCollection = FeatureCollection<Polygon, HabitatProperties>;
+
+interface MarkerClusterType {
+  getChildCount(): number;
+}
 
 export {
   speciesMap,
@@ -187,5 +203,7 @@ export {
   type TileLayersMap,
   type HabitatFeature,
   type HabitatCollection,
+  type MarkerClusterType,
   POLYGON_PULSE_DELAY,
+  DEFAULT_MAP_COORDS,
 };

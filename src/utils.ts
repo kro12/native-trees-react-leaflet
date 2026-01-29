@@ -1,4 +1,4 @@
-import { speciesMap, darkerShadeColourMap, treeColors } from "./constants";
+import { speciesMap, darkerShadeColourMap, treeColors, type HabitatCollection, type HabitatFeature } from "./constants";
 import type { Feature, Position } from 'geojson'
 import proj4 from "proj4";
 
@@ -52,11 +52,11 @@ const convertCoord = (coord: Position): Position => {
   }
 };
 
-type HabitatFeature = {
-  properties: {
-    COUNTY: string | string[]
-  }
-}
+// type HabitatFeature = {
+//   properties: {
+//     COUNTY: string | string[]
+//   }
+// }
 
 const reprojectFeature = (feature: Feature): Feature => {
   const geom = feature.geometry;
@@ -135,6 +135,51 @@ const deriveCounties = (habitatsData: HabitatsData): string[] => {
       .filter((c, i, self) => self.indexOf(c) === i)
       .sort() || []
   );
+};
+
+export const loadHabitatData = async (): Promise<{
+  habitatsData: HabitatCollection;
+  counties: string[];
+  availableSpecies: string[];
+}> => {
+  const habitatsRes = await fetch("/data/NSNW_Woodland_Habitats_2010.json");
+  if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`);
+
+  const habitatsData: HabitatCollection = await habitatsRes.json();
+  console.log("Loaded:", habitatsData.features?.length, "polygons");
+
+  console.log("Converting ITM → WGS84...");
+  habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
+
+  habitatsData.features?.forEach((f) => {
+    const raw = f.properties.NS_SPECIES || f.properties.NSNW_DESC || "";
+    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] || "Unknown";
+    f.properties._centroid = getCentroid(f.geometry.coordinates);
+    f.properties._genus = getGenusFromSpecies(
+      f.properties.cleanedSpecies
+    );
+  });
+
+  const speciesCounts: Record<string, number> = {};
+  habitatsData.features.forEach((f) => {
+    const sp = f.properties.cleanedSpecies;
+    speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
+  });
+  console.log("Species distribution:", speciesCounts);
+
+  const genera = new Set<string>();
+  habitatsData.features.forEach((f) => {
+    const genus = f.properties._genus;
+    if (genus) genera.add(genus);
+  });
+
+  const speciesList = Array.from(genera).sort();
+  const allCounties = deriveCounties(habitatsData);
+  return {
+    habitatsData,
+    counties: ["All", ...allCounties],
+    availableSpecies: speciesList,
+  };
 };
 
 export {

@@ -23,6 +23,7 @@ import {
   getColorForSpecies,
   getDarkerShade,
   getGenusFromSpecies,
+  loadHabitatData,
 } from "./utils";
 import "leaflet/dist/leaflet.css";
 import CountyZoomer from "./components/county_zoomer";
@@ -56,44 +57,11 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const habitatsRes = await fetch("/data/NSNW_Woodland_Habitats_2010.json");
-        if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`);
-
-        const habitatsData: HabitatCollection = await habitatsRes.json();
-        console.log("Loaded:", habitatsData.features?.length, "polygons");
-
-        console.log("Converting ITM → WGS84...");
-        habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[];
-
-        habitatsData.features?.forEach((f) => {
-          const raw = f.properties.NS_SPECIES || f.properties.NSNW_DESC || "";
-          f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] || "Unknown";
-          f.properties._centroid = getCentroid(f.geometry.coordinates);
-          f.properties._genus = getGenusFromSpecies(
-            f.properties.cleanedSpecies
-          );
-        });
-
-        const speciesCounts: Record<string, number> = {};
-        habitatsData.features.forEach((f) => {
-          const sp = f.properties.cleanedSpecies;
-          speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
-        });
-        console.log("Species distribution:", speciesCounts);
-
-        const genera = new Set<string>();
-        habitatsData.features.forEach((f) => {
-          const genus = f.properties._genus;
-          if (genus) genera.add(genus);
-        });
-
-        const speciesList = Array.from(genera).sort();
+        const {habitatsData, counties: countyList, availableSpecies: speciesList} = await loadHabitatData()
+        setHabitats(habitatsData);
+        setCounties(countyList);
         setAvailableSpecies(speciesList);
         setSelectedSpecies(speciesList);
-
-        setHabitats(habitatsData);
-        const allCounties = deriveCounties(habitatsData);
-        setCounties(["All", ...allCounties]);
       } catch (err) {
         console.error("Load failed:", err);
       }

@@ -5,22 +5,24 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import reactX from 'eslint-plugin-react-x'
 import reactDom from 'eslint-plugin-react-dom'
-import prettier from 'eslint-config-prettier' // NEW: Import Prettier config
+import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   { ignores: ['dist'] },
+
+  // 1) Typed linting ONLY for app code
   {
+    files: ['src/**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
-    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ['./tsconfig.app.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -34,11 +36,19 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       ...reactX.configs['recommended-typescript'].rules,
       ...reactDom.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
-  prettier // NEW: Add Prettier config LAST to disable conflicting ESLint formatting rules
+
+  // 2) Tests: NO typed linting (avoids TSConfig include issues)
+  {
+    files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+  },
+
+  prettier
 )

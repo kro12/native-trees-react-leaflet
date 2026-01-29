@@ -233,13 +233,6 @@ function App() {
       });
     }
 
-    console.log(
-      "🔍 Filtered to:",
-      filtered.length,
-      "sites. Selected:",
-      selectedSpecies
-    );
-
     return {
       ...habitats,
       features: filtered,
@@ -380,33 +373,9 @@ function App() {
   return (
     <>
       {!habitats && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #f59e0b",
-              borderRadius: "50%",
-              animation: "spin 0.8s linear infinite",
-            }}
-          />
-          <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: 500 }}>
+        <div className="loading-overlay">
+          <div className="loading-spinner" />
+          <div className="loading-text">
             Converting coordinates...
           </div>
         </div>
@@ -415,7 +384,7 @@ function App() {
       <MapContainer
         center={[53.35, -7.5]}
         zoom={8}
-        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+        className="map-container"
         scrollWheelZoom={true}
       >
         <TileLayer

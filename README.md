@@ -117,7 +117,7 @@ src/
 
 ---
 
-[![CI](https://github.com/kro12/<REPO>/actions/workflows/ci.yml/badge.svg)](https://github.com/<kro12>/<REPO>/actions/workflows/ci.yml)
+[![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/<kro12>/native-trees-react-leaflet/actions/workflows/ci.yml)
 
 ## Testing Strategy
 

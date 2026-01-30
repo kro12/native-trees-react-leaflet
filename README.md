@@ -140,6 +140,17 @@ Mocks are used selectively to avoid testing Leaflet internals while still valida
 
 The project uses a lightweight GitHub Actions workflow to ensure formatting, linting, type safety, tests, and builds remain green.
 
+### Bundle analysis & code splitting
+
+Leaflet and its React bindings account for a significant portion of the production bundle size.
+
+During development, the build was analysed using `rollup-plugin-visualizer` to understand bundle composition. Based on this, an optional manual chunk is defined for Leaflet-related dependencies:
+
+````ts
+manualChunks: {
+  leaflet: ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],
+}
+
 ---
 
 ## Development
@@ -148,7 +159,7 @@ The project uses a lightweight GitHub Actions workflow to ensure formatting, lin
 
 ```bash
 npm install
-```
+````
 
 ### Run the dev server
 

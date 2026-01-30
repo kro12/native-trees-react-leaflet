@@ -24,7 +24,7 @@ The application is structured to keep domain logic, UI components, and infrastru
 
 ## Why I Built This
 
-I wanted to build something that sat between a “toy demo” and a production-scale application.
+I wanted to build something that sat between a prototype and a production-ready application.
 
 Mapping and geospatial UIs tend to surface real-world complexity very quickly:
 async data loading, large datasets, conditional rendering by zoom level, and tricky third‑party APIs.  
@@ -117,6 +117,8 @@ src/
 
 ---
 
+[![CI](https://github.com/kro12/<REPO>/actions/workflows/ci.yml/badge.svg)](https://github.com/<kro12>/<REPO>/actions/workflows/ci.yml)
+
 ## Testing Strategy
 
 Testing is layered rather than exhaustive:
@@ -135,6 +137,8 @@ Testing is layered rather than exhaustive:
     - zoom-triggered rendering behaviour
 
 Mocks are used selectively to avoid testing Leaflet internals while still validating integration points.
+
+The project uses a lightweight GitHub Actions workflow to ensure formatting, linting, type safety, tests, and builds remain green.
 
 ---
 

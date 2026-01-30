@@ -1,4 +1,12 @@
 {
-  "extends": "./tsconfig.json",
-  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"]
+  "extends": "./tsconfig.app.json",
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/tests/**/*.ts",
+    "src/tests/**/*.tsx",
+    "vite.config.ts",
+    "tests/setup.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -7,12 +10,16 @@ import reactX from 'eslint-plugin-react-x'
 import reactDom from 'eslint-plugin-react-dom'
 import prettier from 'eslint-config-prettier'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 export default tseslint.config(
   { ignores: ['dist'] },
 
-  // 1) Typed linting ONLY for app code
+  // App code: typed linting
   {
     files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/tests/**', '**/*.test.*', '**/*.spec.*', '**/__tests__/**'],
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
@@ -22,8 +29,8 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
+        project: [path.join(__dirname, 'tsconfig.eslint.json')],
+        tsconfigRootDir: __dirname,
       },
     },
     plugins: {
@@ -40,16 +47,20 @@ export default tseslint.config(
     },
   },
 
-  // 2) Tests: NO typed linting (avoids TSConfig include issues)
+  // Tests: untyped linting (fast, avoids project/include headaches)
   {
-    files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    files: [
+      'src/tests/**/*.{ts,tsx}',
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      '**/__tests__/**/*.{ts,tsx}',
+    ],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        project: ['./tsconfig.vitest.json'],
-        tsconfigRootDir: import.meta.dirname,
+      globals: {
+        ...globals.browser,
+        ...globals.node,
       },
     },
   },

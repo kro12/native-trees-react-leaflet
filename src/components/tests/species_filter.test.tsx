@@ -1,0 +1,160 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import '@testing-library/jest-dom'
+
+import SpeciesFilter from '../species_filter'
+import { treeColors } from '../../constants'
+
+describe('SpeciesFilter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders the toggle button with selected/available counts', () => {
+    render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={false}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /Species \(1\/2\) ▾/ })).toBeInTheDocument()
+  })
+
+  it('clicking the button toggles dropdown open state via setSpeciesDropdownOpen', () => {
+    const setSpeciesDropdownOpen = vi.fn()
+
+    render(
+      <SpeciesFilter
+        selectedSpecies={[]}
+        availableSpecies={['Alnus']}
+        speciesDropdownOpen={false}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Species \(0\/1\) ▾/ }))
+    expect(setSpeciesDropdownOpen).toHaveBeenCalledTimes(1)
+    expect(setSpeciesDropdownOpen).toHaveBeenCalledWith(true)
+  })
+
+  it('adds the "open" class to the dropdown when speciesDropdownOpen is true', () => {
+    const { container } = render(
+      <SpeciesFilter
+        selectedSpecies={[]}
+        availableSpecies={['Alnus']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    const dropdown = container.querySelector('.species-dropdown')
+    expect(dropdown).toBeInTheDocument()
+    expect(dropdown).toHaveClass('open')
+  })
+
+  it('Select All checkbox is checked when selectedSpecies.length === availableSpecies.length', () => {
+    render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus', 'Betula']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: /Select All/i })
+    expect(selectAll).toBeChecked()
+  })
+
+  it('changing Select All calls toggleAllSpecies', () => {
+    const toggleAllSpecies = vi.fn()
+
+    render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={toggleAllSpecies}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Select All/i }))
+    expect(toggleAllSpecies).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a checkbox per available species and checks based on selectedSpecies', () => {
+    render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    const alnus = screen.getByRole('checkbox', { name: /Alder/i })
+    const betula = screen.getByRole('checkbox', { name: /Betula/i }) // fallback display
+
+    expect(alnus).toBeChecked()
+    expect(betula).not.toBeChecked()
+  })
+
+  it('clicking a species checkbox calls toggleSpecies with that genus', () => {
+    const toggleSpecies = vi.fn()
+
+    render(
+      <SpeciesFilter
+        selectedSpecies={[]}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={toggleSpecies}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Alder/i }))
+    expect(toggleSpecies).toHaveBeenCalledTimes(1)
+    expect(toggleSpecies).toHaveBeenCalledWith('Alnus')
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Betula/i }))
+    expect(toggleSpecies).toHaveBeenCalledTimes(2)
+    expect(toggleSpecies).toHaveBeenLastCalledWith('Betula')
+  })
+
+  it('renders the color swatch with the backgroundColor from treeColors', () => {
+    render(
+      <SpeciesFilter
+        selectedSpecies={[]}
+        availableSpecies={['Alnus']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+      />
+    )
+
+    const label = screen.getByText(/Alnus.*Alder/i).closest('label')
+    expect(label).toBeInTheDocument()
+
+    const swatch = label!.querySelector('span')
+    expect(swatch).toBeInTheDocument()
+
+    expect(swatch).toHaveStyle({ backgroundColor: treeColors.Alnus })
+  })
+})

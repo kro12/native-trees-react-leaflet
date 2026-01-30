@@ -8,6 +8,9 @@ interface HabitatProperties {
   COUNTY: string | string[]
   SITE_NAME?: string
   AREA: number
+  H_FOSSDESC?: string
+  COVERAGE?: string
+  SITE_CODE?: number
 }
 
 interface Props {
@@ -16,7 +19,13 @@ interface Props {
 }
 
 const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
-  const species = feature.properties.cleanedSpecies ?? 'Unknown'
+  const deriveFeatureAttrib = (key: keyof HabitatProperties) => {
+    const v = feature?.properties?.[key]
+    return v == null ? 'Undefined' : String(v)
+  }
+  const species = deriveFeatureAttrib('cleanedSpecies')
+  const habitat = deriveFeatureAttrib('H_FOSSDESC')
+  const habitatComposition = deriveFeatureAttrib('COVERAGE')
   const color = getColorForSpecies(species)
   const genus = feature.properties._genus
   const info = genus ? speciesInfo[genus] : undefined
@@ -28,7 +37,7 @@ const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
   return (
     <div style={{ fontFamily: 'sans-serif', minWidth: '280px' }}>
       <h3 style={{ margin: '0 0 12px 0', fontSize: '18px' }}>
-        {feature.properties.SITE_NAME ?? 'NSNW Site'}
+        {feature.properties.SITE_NAME ?? `NSNW Site ${feature.properties.SITE_CODE}`}
       </h3>
 
       {info && (
@@ -66,7 +75,18 @@ const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
           <strong>County:</strong> {county}
         </div>
         <div>
-          <strong>Species:</strong> <span style={{ color, fontWeight: 'bold' }}>{species}</span>
+          <strong>Primary Species:</strong>{' '}
+          <span style={{ color, fontWeight: 'bold' }}>{species}</span>
+        </div>
+        <div>
+          <strong>Habitat:</strong> <span style={{ color, fontWeight: 'bold' }}>{habitat}</span>
+        </div>
+        <div>
+          <strong>Habitat composition:</strong>{' '}
+          <span style={{ color, fontWeight: 'bold' }}>
+            {habitatComposition}
+            {` (%)`}
+          </span>
         </div>
         <div>
           <strong>Area:</strong> {(feature.properties.AREA / 10000).toFixed(2)} ha

@@ -47,6 +47,10 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        project: ['./tsconfig.vitest.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 

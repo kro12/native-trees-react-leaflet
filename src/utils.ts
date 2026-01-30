@@ -182,7 +182,8 @@ export const loadHabitatData = async (): Promise<{
   const allCounties = deriveCounties(habitatsData)
   return {
     habitatsData,
-    counties: ['All', ...allCounties],
+    // counties: ['All', ...allCounties] - force County selection for perf bump
+    counties: allCounties,
     availableSpecies: speciesList,
   }
 }

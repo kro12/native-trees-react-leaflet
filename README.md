@@ -1,5 +1,7 @@
 # Native Trees Map
 
+[![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml)
+
 An interactive map-based application for exploring ancient woodland and native tree habitats.  
 The project visualises geospatial habitat data, allowing users to filter by county and species, inspect individual sites, and explore data at different zoom levels.
 
@@ -116,8 +118,6 @@ src/
 - Leaflet-specific behaviour is isolated to keep React components predictable.
 
 ---
-
-[![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml)
 
 ## Testing Strategy
 

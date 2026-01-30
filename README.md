@@ -117,7 +117,7 @@ src/
 
 ---
 
-[![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/<kro12>/native-trees-react-leaflet/actions/workflows/ci.yml)
+[![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml)
 
 ## Testing Strategy
 
@@ -139,6 +139,8 @@ Testing is layered rather than exhaustive:
 Mocks are used selectively to avoid testing Leaflet internals while still validating integration points.
 
 The project uses a lightweight GitHub Actions workflow to ensure formatting, linting, type safety, tests, and builds remain green.
+
+---
 
 ### Bundle analysis & code splitting
 
@@ -205,7 +207,7 @@ That separation is intentional and helps keep editor feedback, tests, and builds
 - Time‑based layers to compare historical woodland coverage
 - Improved accessibility for map controls
 - Server‑side data preprocessing for larger datasets
-- Mobile‑first layout refinements
+- Optional hosted demo
 
 ---
 
@@ -220,7 +222,7 @@ The spatial data used in this project is derived from the **National Survey of N
 The original shapefile data was converted to **GeoJSON** for use in a web‑mapping context.  
 Conversion was performed using an online GIS conversion tool prior to ingestion into the application.
 
-> The application does not modify or reinterpret the underlying dataset beyond format conversion and client‑side filtering.
+The application does not modify or reinterpret the underlying dataset beyond format conversion and client‑side filtering.
 
 ---
 
@@ -242,13 +244,36 @@ npm run test
 
 ---
 
+## CI
+
+A GitHub Actions workflow runs on every push to:
+
+- Check formatting
+- Run ESLint
+- Type-check the project
+- Execute the test suite
+- Build the app
+
+This keeps the repository in a consistently healthy state even as dependencies or tooling evolve.
+
+---
+
+## Optional bundle analysis
+
+For occasional performance exploration, the repo includes **optional build visualisation** using `rollup-plugin-visualizer`.
+
+When enabled, it generates a treemap showing which dependencies contribute most to bundle size.  
+This is **disabled by default** and intended as a learning and inspection tool rather than production setup.
+
+---
+
 ## Why I Built This
 
 I wanted to explore the intersection of **frontend engineering**, **geospatial data**, and **real‑world datasets**.
 
-Mapping applications introduce a unique set of challenges — asynchronous data loading, imperative APIs, spatial performance concerns, and complex UI state. This project was an opportunity to design a clean React architecture around those constraints while keeping the codebase well‑typed, testable, and maintainable.
+Mapping applications introduce a unique set of challenges, asynchronous data loading, imperative APIs, spatial performance concerns, and complex UI state. This project was an opportunity to design a clean React architecture around those constraints while keeping the codebase well‑typed, testable, and maintainable.
 
-The subject matter — Ireland’s native woodlands — also made it a rewarding dataset to work with and explore.
+The subject matter, Ireland’s native woodlands, also made it a rewarding dataset to work with and explore.
 
 ---
 

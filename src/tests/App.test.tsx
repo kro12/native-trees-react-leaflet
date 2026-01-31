@@ -1,8 +1,10 @@
+// src/tests/App.test.tsx
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { makeHabitats } from './fixtures/habitats'
+
 /**
  * IMPORTANT: Use `import type` for app types in this test suite.
  *
@@ -20,15 +22,21 @@ import { makeHabitats } from './fixtures/habitats'
  * This is required for type-safe integration tests with strict
  * TypeScript + ESLint rules.
  */
-
 import type { HabitatFeature, HabitatCollection } from '../constants'
 
 import App from '../App'
 
-interface LoadHabitatDataResult {
-  habitatsData: HabitatCollection
-  counties: string[]
-  availableSpecies: string[]
+// ----------------------
+// Small helper: deferred promise (lets us test "disabled while loading")
+// ----------------------
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
 }
 
 // ----------------------
@@ -38,7 +46,6 @@ vi.mock('../constants', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../constants')>()
   return {
     ...actual,
-    // override only what App needs deterministically
     POLYGON_PULSE_DELAY: 0,
     DEFAULT_MAP_COORDS: [53.35, -7.5],
     titleLayers: {
@@ -48,14 +55,34 @@ vi.mock('../constants', async (importOriginal) => {
     },
     speciesInfo: {
       Alnus: { image: '/alnus.jpg', description: 'Alder description' },
+      Betula: { image: '/betula.jpg', description: 'Birch description' },
+    },
+    // IMPORTANT: SpeciesFilter needs this at runtime
+    treeColors: {
+      Alnus: '#ff0000',
+      Betula: '#00ff00',
     },
   }
 })
 
 // ----------------------
-// Mock utils with TS-safe spies (no vi.fn generics)
+// Mock utils (index + county loader + style)
 // ----------------------
-const loadHabitatDataMock = vi.fn<() => Promise<LoadHabitatDataResult>>() // single generic arg
+type HabitatIndex = {
+  counties: string[]
+  availableSpecies: string[]
+  files: Record<string, string>
+}
+
+interface LoadIndexResult {
+  counties: string[]
+  availableSpecies: string[]
+  index: HabitatIndex
+}
+
+const loadHabitatDataMock = vi.fn<() => Promise<LoadIndexResult>>()
+const loadHabitatsForCountyMock =
+  vi.fn<(county: string, index: HabitatIndex) => Promise<HabitatCollection>>()
 const deriveStyleFeatureMock = vi.fn<(shouldPulse: boolean, feature: unknown) => unknown>(() => ({
   weight: 1,
   fillOpacity: 0.5,
@@ -63,6 +90,8 @@ const deriveStyleFeatureMock = vi.fn<(shouldPulse: boolean, feature: unknown) =>
 
 vi.mock('../utils', () => ({
   loadHabitatData: () => loadHabitatDataMock(),
+  loadHabitatsForCounty: (county: string, index: HabitatIndex) =>
+    loadHabitatsForCountyMock(county, index),
   deriveStyleFeature: (shouldPulse: boolean, feature: unknown) =>
     deriveStyleFeatureMock(shouldPulse, feature),
 }))
@@ -102,7 +131,6 @@ vi.mock('../hooks/useContextMenu', () => ({
 
 // ----------------------
 // Mock child components that touch refs/zoom
-// Move effects to useEffect to satisfy react-hooks/refs
 // ----------------------
 type MapRef = React.MutableRefObject<{
   setView: (...args: unknown[]) => void
@@ -161,15 +189,12 @@ vi.mock('../components/species_filter', async () => {
 })
 
 // ----------------------
-// Mock react-leaflet / cluster WITHOUT mutating outer vars during render
-// Use call-recording spies (allowed)
+// Mock react-leaflet / cluster
 // ----------------------
 const tileLayerSpy = vi.fn<(props: { url: string; attribution?: string }) => void>()
 type OnEachFeature = (feature: HabitatFeature, layer: FakePathLayer) => void
-
 const geoJsonSpy =
   vi.fn<(props: { data: HabitatCollection; onEachFeature?: OnEachFeature }) => void>()
-
 const onEachFeatureLayerBindPopupSpy = vi.fn<() => void>()
 
 interface FakePathLayer {
@@ -220,40 +245,69 @@ vi.mock('react-leaflet-cluster', () => ({
 }))
 
 describe('App integration', () => {
+  const index: HabitatIndex = {
+    counties: ['All', 'Dublin', 'Cork'],
+    availableSpecies: ['Alnus', 'Betula'],
+    files: {
+      Dublin: '/data/habitats/Dublin.json',
+      Cork: '/data/habitats/Cork.json',
+      All: '/data/habitats/All.json',
+    },
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
 
     loadHabitatDataMock.mockResolvedValue({
-      habitatsData: makeHabitats(),
-      counties: ['All', 'Dublin', 'Cork'],
-      availableSpecies: ['Alnus', 'Betula'],
+      counties: index.counties,
+      availableSpecies: index.availableSpecies,
+      index,
+    })
+
+    loadHabitatsForCountyMock.mockImplementation(async (county) => {
+      if (county === 'Dublin') return makeHabitats()
+      return { type: 'FeatureCollection', features: [] } as HabitatCollection
     })
   })
 
-  it('shows a loading overlay until habitat data loads, then shows county options', async () => {
+  it('disables county select until index loads, then shows county options', async () => {
+    const deferred = createDeferred<LoadIndexResult>()
+    loadHabitatDataMock.mockReturnValueOnce(deferred.promise)
+
     render(<App />)
 
-    expect(screen.getByText(/Converting coordinates/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Species/i })).toBeDisabled()
+    const select = screen.getByLabelText(/County/i) as HTMLSelectElement
+    expect(select).toBeDisabled()
+    expect(within(select).getByRole('option', { name: /Loading counties/i })).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.queryByText(/Converting coordinates/i)).not.toBeInTheDocument()
+    deferred.resolve({
+      counties: index.counties,
+      availableSpecies: index.availableSpecies,
+      index,
     })
 
-    const select = screen.getByLabelText(/County/i)
+    await waitFor(() => expect(select).not.toBeDisabled())
+
     const options = within(select)
       .getAllByRole('option')
       .map((o) => o.textContent)
+
     expect(options).toEqual(['-- Select a County --', 'All', 'Dublin', 'Cork'])
   })
 
-  it('selecting a county shows site count and renders markers', async () => {
+  it('selecting a county loads habitats and shows site count + markers', async () => {
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.queryByText(/Converting coordinates/i)).not.toBeInTheDocument()
-    })
+    expect(screen.getByRole('button', { name: /Species/i })).toBeDisabled()
+    const select = screen.getByLabelText(/County/i) as HTMLSelectElement
+    await waitFor(() => expect(select).not.toBeDisabled())
 
-    fireEvent.change(screen.getByLabelText(/County/i), { target: { value: 'Dublin' } })
+    fireEvent.change(select, { target: { value: 'Dublin' } })
+
+    await waitFor(() => {
+      expect(loadHabitatsForCountyMock).toHaveBeenCalledWith('Dublin', index)
+    })
 
     expect(await screen.findByText(/2 sites found/i)).toBeInTheDocument()
     expect(screen.getByTestId('habitat-markers')).toHaveTextContent('2')
@@ -262,9 +316,9 @@ describe('App integration', () => {
   it('base map buttons update active class and TileLayer url', async () => {
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.queryByText(/Converting coordinates/i)).not.toBeInTheDocument()
-    })
+    expect(screen.getByRole('button', { name: /Species/i })).toBeDisabled()
+    const select = screen.getByLabelText(/County/i) as HTMLSelectElement
+    await waitFor(() => expect(select).not.toBeDisabled())
 
     expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', 'sat-url')
 
@@ -285,9 +339,8 @@ describe('App integration', () => {
   it('closes species dropdown on outside click', async () => {
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.queryByText(/Converting coordinates/i)).not.toBeInTheDocument()
-    })
+    const select = screen.getByLabelText(/County/i) as HTMLSelectElement
+    await waitFor(() => expect(select).not.toBeDisabled())
 
     fireEvent.click(screen.getByRole('button', { name: /Species/i }))
     expect(document.querySelector('.species-dropdown')).toHaveClass('open')
@@ -302,23 +355,19 @@ describe('App integration', () => {
   it('renders GeoJSON when zoom >= 11 and county selected, and binds popups', async () => {
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.queryByText(/Converting coordinates/i)).not.toBeInTheDocument()
-    })
+    const select = screen.getByLabelText(/County/i) as HTMLSelectElement
+    await waitFor(() => expect(select).not.toBeDisabled())
 
-    fireEvent.change(screen.getByLabelText(/County/i), { target: { value: 'Dublin' } })
+    fireEvent.change(select, { target: { value: 'Dublin' } })
 
     expect(await screen.findByTestId('geojson')).toBeInTheDocument()
 
-    // GeoJSON called at least once
     expect(geoJsonSpy).toHaveBeenCalled()
 
-    // Our FakePathLayer.bindPopup spy is called once per feature rendered (2 in Dublin)
     await waitFor(() => {
       expect(onEachFeatureLayerBindPopupSpy).toHaveBeenCalledTimes(2)
     })
 
-    // Popup React root render invoked (through createRoot mock)
     expect(renderIntoPopupMock).toHaveBeenCalled()
   })
 })

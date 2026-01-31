@@ -12,7 +12,7 @@ This repository focuses on clarity, correctness, and maintainability across UI, 
 ## Overview
 
 Native Trees Map is a React + TypeScript application built with Vite and Leaflet.  
-It loads habitat data, displays it on an interactive map, and provides multiple ways to explore and interrogate that data:
+It loads habitat data progressively, displays it on an interactive map, and provides multiple ways to explore and interrogate that data:
 
 - County-based filtering
 - Species-based filtering
@@ -21,6 +21,16 @@ It loads habitat data, displays it on an interactive map, and provides multiple 
 - Context menus and subtle visual feedback for map interactions
 
 The application is structured to keep domain logic, UI components, and infrastructure concerns clearly separated.
+
+---
+
+## How to Explore the App
+
+For a quick walkthrough:
+
+- Select a **county** to load habitat sites for that area
+- Use the **species filter** to narrow results by dominant tree type
+- Zoom in to reveal **habitat polygons** and click sites for detailed information
 
 ---
 
@@ -38,6 +48,11 @@ clear data flow, explicit state transitions, and tooling that supports change ov
 ---
 
 ## Key Features
+
+- **Progressive data loading**
+  - Lightweight startup index
+  - County-level GeoJSON fetched on demand
+  - Fast county switching without reloading the full dataset
 
 - **Interactive Leaflet map**
   - Tile layer switching (street, satellite, terrain)
@@ -62,7 +77,7 @@ clear data flow, explicit state transitions, and tooling that supports change ov
 - **Robust testing**
   - Unit tests for utilities
   - Component tests for isolated UI logic
-  - Integration-style tests for the main App flow
+  - Integration-style tests for the main App flow, including progressive data loading and disabled UI states
 
 ---
 
@@ -142,16 +157,41 @@ The project uses a lightweight GitHub Actions workflow to ensure formatting, lin
 
 ---
 
+## Data Loading Strategy
+
+The original NSNW dataset is relatively large (~14 MB as a single GeoJSON file).  
+To keep initial load times fast and interactions responsive, the application uses a **two-phase loading approach**:
+
+1. **Index load (startup)**
+   - A lightweight index is loaded on application start
+   - Contains:
+     - Available counties
+     - Available species
+     - Metadata required to request county data
+   - This keeps the initial render fast and predictable
+
+2. **County-level loading (on demand)**
+   - Habitat polygons are stored as separate GeoJSON files per county
+   - Selecting a county triggers a fetch for that county only
+   - Typical file sizes are ~0.5–1.3 MB per county
+
+This approach avoids downloading unused data, improves perceived performance, and scales cleanly if additional datasets are introduced later.
+
+Loading state is visualised inline through small UI changes (disabled controls and status text) rather than a blocking full-screen overlay, reflecting the relatively small per-county payload sizes and prioritising visual continuity during interaction.
+
+---
+
 ### Bundle analysis & code splitting
 
 Leaflet and its React bindings account for a significant portion of the production bundle size.
 
 During development, the build was analysed using `rollup-plugin-visualizer` to understand bundle composition. Based on this, an optional manual chunk is defined for Leaflet-related dependencies:
 
-````ts
+```ts
 manualChunks: {
   leaflet: ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],
 }
+```
 
 ---
 
@@ -161,7 +201,7 @@ manualChunks: {
 
 ```bash
 npm install
-````
+```
 
 ### Run the dev server
 
@@ -206,7 +246,7 @@ That separation is intentional and helps keep editor feedback, tests, and builds
 - Heatmap visualisation of species density or habitat concentration
 - Time‑based layers to compare historical woodland coverage
 - Improved accessibility for map controls
-- Server‑side data preprocessing for larger datasets
+- Server-side preprocessing or hosting of county-level datasets
 - Optional hosted demo
 
 ---
@@ -255,6 +295,7 @@ A GitHub Actions workflow runs on every push to:
 - Build the app
 
 This keeps the repository in a consistently healthy state even as dependencies or tooling evolve.
+The CI pipeline mirrors local development scripts to ensure behaviour is consistent across environments.
 
 ---
 

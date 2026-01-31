@@ -39,9 +39,10 @@ function App() {
   const [shouldPulse, setShouldPulse] = useState<boolean>(false)
 
   const [habitatIndex, setHabitatIndex] = useState<HabitatIndex | null>(null)
-  // Optional but strongly recommended: separate loading states
+
   const [isLoadingIndex, setIsLoadingIndex] = useState(true)
   const [isLoadingCounty, setIsLoadingCounty] = useState(false)
+  const panelDisabled = isLoadingIndex || isLoadingCounty || !habitatIndex
 
   const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>('satellite')
   const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 })
@@ -152,6 +153,12 @@ function App() {
 
     prevZoomRef.current = currentZoom
   }, [currentZoom])
+
+  useEffect(() => {
+    if (panelDisabled && speciesDropdownOpen) {
+      setSpeciesDropdownOpen(false)
+    }
+  }, [panelDisabled, speciesDropdownOpen])
 
   const filteredHabitats = useMemo(() => {
     if (!habitats) return null
@@ -272,14 +279,12 @@ function App() {
 
   return (
     <>
-      {(isLoadingIndex || isLoadingCounty) && (
-        <div className="loading-overlay">
+      <div className={`loading-overlay ${isLoadingIndex ? 'is-visible' : ''}`}>
+        <div className="loading-content">
           <div className="loading-spinner" />
-          <div className="loading-text">
-            {isLoadingIndex ? 'Loading habitat index...' : 'Loading county habitats...'}
-          </div>
+          <div className="loading-text">Loading habitat index...</div>
         </div>
-      )}
+      </div>
 
       <MapContainer
         center={DEFAULT_MAP_COORDS}
@@ -325,7 +330,7 @@ function App() {
               <select
                 id="county-select"
                 value={selectedCounty}
-                disabled={isLoadingIndex || !habitatIndex}
+                disabled={panelDisabled}
                 onChange={(e) => setSelectedCounty(e.target.value)}
               >
                 <option value="">
@@ -357,6 +362,7 @@ function App() {
                 setSpeciesDropdownOpen={setSpeciesDropdownOpen}
                 toggleAllSpecies={toggleAllSpecies}
                 toggleSpecies={toggleSpecies}
+                disabled={panelDisabled}
               />
             </div>
 
@@ -366,18 +372,21 @@ function App() {
                 <button
                   className={`layer-btn ${baseLayer === 'street' ? 'active' : ''}`}
                   onClick={() => setBaseLayer('street')}
+                  disabled={panelDisabled}
                 >
                   Street
                 </button>
                 <button
                   className={`layer-btn ${baseLayer === 'satellite' ? 'active' : ''}`}
                   onClick={() => setBaseLayer('satellite')}
+                  disabled={panelDisabled}
                 >
                   Satellite
                 </button>
                 <button
                   className={`layer-btn ${baseLayer === 'terrain' ? 'active' : ''}`}
                   onClick={() => setBaseLayer('terrain')}
+                  disabled={panelDisabled}
                 >
                   Terrain
                 </button>
@@ -388,7 +397,11 @@ function App() {
               selectedCounty !== '' &&
               currentZoom >= 11 &&
               (filteredHabitats?.features?.length ?? 0) > 0 && (
-                <button className="highlight-btn-full" onClick={flash} disabled={isFlashing}>
+                <button
+                  className="highlight-btn-full"
+                  onClick={flash}
+                  disabled={panelDisabled || isFlashing}
+                >
                   {isFlashing ? 'Highlighting...' : '💡 Highlight All Sites'}
                 </button>
               )}

@@ -1,3 +1,4 @@
+import { useEffect, useId } from 'react'
 import { treeColors, genusDisplayNames } from '../constants'
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
   toggleSpecies: (genus: string) => void
   toggleAllSpecies: () => void
   setSpeciesDropdownOpen: (open: boolean) => void
+  disabled: boolean
 }
 
 const SpeciesFilter = ({
@@ -16,16 +18,33 @@ const SpeciesFilter = ({
   toggleSpecies,
   toggleAllSpecies,
   setSpeciesDropdownOpen,
+  disabled,
 }: Props) => {
+  const dropdownId = useId()
+
+  useEffect(() => {
+    if (disabled && speciesDropdownOpen) {
+      setSpeciesDropdownOpen(false)
+    }
+  }, [disabled, speciesDropdownOpen, setSpeciesDropdownOpen])
+
   return (
     <div className="species-filter">
       <button
         onClick={() => setSpeciesDropdownOpen(!speciesDropdownOpen)}
         style={{ padding: '5px 10px', cursor: 'pointer' }}
+        disabled={disabled}
+        aria-disabled={disabled}
+        aria-expanded={speciesDropdownOpen}
+        aria-controls={dropdownId}
       >
         Species ({selectedSpecies.length}/{availableSpecies.length}) ▾
       </button>
-      <div className={`species-dropdown ${speciesDropdownOpen ? 'open' : ''}`}>
+      <div
+        id={dropdownId}
+        className={`species-dropdown ${speciesDropdownOpen ? 'open' : ''}`}
+        aria-hidden={!speciesDropdownOpen}
+      >
         <label
           className="species-checkbox"
           style={{
@@ -38,6 +57,8 @@ const SpeciesFilter = ({
             type="checkbox"
             checked={selectedSpecies.length === availableSpecies.length}
             onChange={toggleAllSpecies}
+            disabled={disabled}
+            aria-disabled={disabled}
           />
           Select All
         </label>
@@ -47,6 +68,8 @@ const SpeciesFilter = ({
               type="checkbox"
               checked={selectedSpecies.includes(genus)}
               onChange={() => toggleSpecies(genus)}
+              disabled={disabled}
+              aria-disabled={disabled}
             />
             <span
               style={{

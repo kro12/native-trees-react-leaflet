@@ -19,6 +19,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -36,6 +37,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+        disabled={false}
       />
     )
 
@@ -53,6 +55,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -70,6 +73,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -88,6 +92,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={toggleAllSpecies}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -104,6 +109,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -125,6 +131,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={toggleSpecies}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -146,6 +153,7 @@ describe('SpeciesFilter', () => {
         toggleSpecies={vi.fn()}
         toggleAllSpecies={vi.fn()}
         setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
       />
     )
 
@@ -156,5 +164,62 @@ describe('SpeciesFilter', () => {
     expect(swatch).toBeInTheDocument()
 
     expect(swatch).toHaveStyle({ backgroundColor: treeColors.Alnus })
+  })
+})
+
+describe('SpeciesFilter — disabled behaviour', () => {
+  it('closes an already-open dropdown when disabled becomes true', () => {
+    const setSpeciesDropdownOpen = vi.fn()
+
+    const { rerender } = render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+        disabled={false}
+      />
+    )
+
+    // Now disable it while open
+    rerender(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+        disabled={true}
+      />
+    )
+
+    expect(setSpeciesDropdownOpen).toHaveBeenCalledWith(false)
+  })
+
+  it('adds aria attributes and disables controls when disabled', () => {
+    render(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus', 'Betula']}
+        speciesDropdownOpen={false}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+        disabled={true}
+      />
+    )
+
+    const button = screen.getByRole('button', { name: /Species/i })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    const checkboxes = screen.getAllByRole('checkbox', { hidden: true })
+    checkboxes.forEach((cb) => {
+      expect(cb).toBeDisabled()
+    })
   })
 })

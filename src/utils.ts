@@ -14,20 +14,20 @@ proj4.defs(
   '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 +ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs'
 )
 
-export interface HabitatIndex {
+interface HabitatIndex {
   counties: string[]
   availableSpecies: string[]
   files: Record<string, string> // countyName -> "/data/habitats/<CountyFile>.json"
 }
 
-export const loadHabitatIndex = async (): Promise<HabitatIndex> => {
+const loadHabitatIndex = async (): Promise<HabitatIndex> => {
   const res = await fetch('/data/index.json')
   if (!res.ok) throw new Error(`Habitat index: ${res.status}`)
   return (await res.json()) as HabitatIndex
 }
 
 const enrichHabitats = (habitatsData: HabitatCollection): HabitatCollection => {
-  console.log('Loaded:', habitatsData.features?.length, 'polygons')
+  console.log(`Loaded ${habitatsData.features.length} habitats for county`)
   const geometryTypes = new Set(habitatsData.features.map((f) => f.geometry.type))
   console.log('Geometry types found:', Array.from(geometryTypes))
 
@@ -154,25 +154,7 @@ const getCentroid = (coordinates: Position[][]) => {
   return [latSum / ring.length, lonSum / ring.length]
 }
 
-export interface HabitatsData {
-  features?: HabitatFeature[]
-}
-
-const deriveCounties = (habitatsData: HabitatsData): string[] => {
-  return (
-    habitatsData.features
-      ?.map((f) => {
-        const c = f.properties.COUNTY
-        return Array.isArray(c) ? c : [c]
-      })
-      .flat()
-      .filter(Boolean)
-      .filter((c, i, self) => self.indexOf(c) === i)
-      .sort() ?? []
-  )
-}
-
-export const loadHabitatsForCounty = async (
+const loadHabitatsForCounty = async (
   county: string,
   index: HabitatIndex
 ): Promise<HabitatCollection> => {
@@ -191,9 +173,7 @@ export const loadHabitatsForCounty = async (
   return enrichHabitats(data as HabitatCollection)
 }
 
-export const loadHabitatData = async (): Promise<{
-  // keep signature compatible with existing callers that expect these
-  habitatsData: HabitatCollection | null
+const loadHabitatData = async (): Promise<{
   counties: string[]
   availableSpecies: string[]
   index: HabitatIndex
@@ -201,7 +181,6 @@ export const loadHabitatData = async (): Promise<{
   const index = await loadHabitatIndex()
 
   return {
-    habitatsData: null, // habitats now loaded per-county
     counties: index.counties,
     availableSpecies: index.availableSpecies,
     index,
@@ -232,6 +211,9 @@ export {
   getColorForSpecies,
   getDarkerShade,
   getCentroid,
-  deriveCounties,
   deriveStyleFeature,
+  loadHabitatsForCounty,
+  loadHabitatData,
+  loadHabitatIndex,
+  type HabitatIndex,
 }

@@ -13,7 +13,12 @@ import {
   type HabitatCollection,
   type MarkerClusterType,
 } from './constants'
-import { loadHabitatData, deriveStyleFeature } from './utils'
+import {
+  loadHabitatData,
+  loadHabitatsForCounty,
+  type HabitatIndex,
+  deriveStyleFeature,
+} from './utils'
 
 import 'leaflet/dist/leaflet.css'
 import CountyZoomer from './components/county_zoomer'
@@ -33,6 +38,11 @@ function App() {
   const [currentZoom, setCurrentZoom] = useState<number>(8)
   const [shouldPulse, setShouldPulse] = useState<boolean>(false)
 
+  const [habitatIndex, setHabitatIndex] = useState<HabitatIndex | null>(null)
+  // Optional but strongly recommended: separate loading states
+  const [isLoadingIndex, setIsLoadingIndex] = useState(true)
+  const [isLoadingCounty, setIsLoadingCounty] = useState(false)
+
   const [baseLayer, setBaseLayer] = useState<keyof TileLayersMap>('satellite')
   const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 })
   const [isDragging, setIsDragging] = useState(false)
@@ -51,26 +61,53 @@ function App() {
   const [speciesDropdownOpen, setSpeciesDropdownOpen] = useState<boolean>(false)
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadIndex = async () => {
       try {
         const {
-          habitatsData,
           counties: countyList,
           availableSpecies: speciesList,
+          index,
         } = await loadHabitatData()
-        setHabitats(habitatsData)
+
+        setHabitatIndex(index)
         setCounties(countyList)
         setAvailableSpecies(speciesList)
         setSelectedSpecies(speciesList)
       } catch (err) {
-        console.error('Load failed:', err)
+        console.error('Failed to load habitat index:', err)
+      } finally {
+        setIsLoadingIndex(false)
       }
     }
 
-    loadData().catch((err) => {
-      console.error('Failed to load habitat data:', err)
-    })
+    void loadIndex()
   }, [])
+
+  useEffect(() => {
+    const loadCounty = async () => {
+      // If nothing selected, clear habitats (so you don't render stale county data)
+      if (!selectedCounty || selectedCounty === '') {
+        setHabitats(null)
+        return
+      }
+
+      if (!habitatIndex) return
+
+      setIsLoadingCounty(true)
+
+      try {
+        const habitatsData = await loadHabitatsForCounty(selectedCounty, habitatIndex)
+        setHabitats(habitatsData)
+      } catch (err) {
+        console.error(`Failed to load habitats for county "${selectedCounty}":`, err)
+        setHabitats(null)
+      } finally {
+        setIsLoadingCounty(false)
+      }
+    }
+
+    void loadCounty()
+  }, [selectedCounty, habitatIndex])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -235,10 +272,12 @@ function App() {
 
   return (
     <>
-      {!habitats && (
+      {(isLoadingIndex || isLoadingCounty) && (
         <div className="loading-overlay">
           <div className="loading-spinner" />
-          <div className="loading-text">Converting coordinates...</div>
+          <div className="loading-text">
+            {isLoadingIndex ? 'Loading habitat index...' : 'Loading county habitats...'}
+          </div>
         </div>
       )}
 
@@ -286,9 +325,12 @@ function App() {
               <select
                 id="county-select"
                 value={selectedCounty}
+                disabled={isLoadingIndex || !habitatIndex}
                 onChange={(e) => setSelectedCounty(e.target.value)}
               >
-                <option value="">-- Select a County --</option>
+                <option value="">
+                  {isLoadingIndex ? '-- Loading counties... --' : '-- Select a County --'}
+                </option>
                 {counties.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -299,6 +341,8 @@ function App() {
 
             {!selectedCounty || selectedCounty === '' ? (
               <div className="info-text">Select a county to view sites</div>
+            ) : isLoadingCounty ? (
+              <div className="info-text">Loading sites…</div>
             ) : (
               <div className="site-count-badge">
                 {filteredHabitats?.features?.length ?? 0} sites found

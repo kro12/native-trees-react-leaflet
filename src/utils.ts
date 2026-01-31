@@ -14,6 +14,43 @@ proj4.defs(
   '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 +ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs'
 )
 
+export interface HabitatIndex {
+  counties: string[]
+  availableSpecies: string[]
+  files: Record<string, string> // countyName -> "/data/habitats/<CountyFile>.json"
+}
+
+export const loadHabitatIndex = async (): Promise<HabitatIndex> => {
+  const res = await fetch('/data/index.json')
+  if (!res.ok) throw new Error(`Habitat index: ${res.status}`)
+  return (await res.json()) as HabitatIndex
+}
+
+const enrichHabitats = (habitatsData: HabitatCollection): HabitatCollection => {
+  console.log('Loaded:', habitatsData.features?.length, 'polygons')
+  const geometryTypes = new Set(habitatsData.features.map((f) => f.geometry.type))
+  console.log('Geometry types found:', Array.from(geometryTypes))
+
+  console.log('Converting ITM → WGS84...')
+  habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[]
+
+  habitatsData.features?.forEach((f) => {
+    const raw = f.properties.NS_SPECIES ?? f.properties.NSNW_DESC ?? ''
+    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] ?? 'Unknown'
+    f.properties._centroid = getCentroid(f.geometry.coordinates)
+    f.properties._genus = getGenusFromSpecies(f.properties.cleanedSpecies)
+  })
+
+  const speciesCounts: Record<string, number> = {}
+  habitatsData.features.forEach((f) => {
+    const sp = f.properties.cleanedSpecies
+    speciesCounts[sp] = (speciesCounts[sp] || 0) + 1
+  })
+  console.log('Species distribution:', speciesCounts)
+
+  return habitatsData
+}
+
 const cleanTreeSpecies = (raw: string[]): string[] => {
   if (!raw || !Array.isArray(raw)) return []
 
@@ -135,56 +172,39 @@ const deriveCounties = (habitatsData: HabitatsData): string[] => {
   )
 }
 
-export const loadHabitatData = async (): Promise<{
-  habitatsData: HabitatCollection
-  counties: string[]
-  availableSpecies: string[]
-}> => {
-  const habitatsRes = await fetch('/data/NSNW_Woodland_Habitats_2010.json')
-  if (!habitatsRes.ok) throw new Error(`Habitats: ${habitatsRes.status}`)
+export const loadHabitatsForCounty = async (
+  county: string,
+  index: HabitatIndex
+): Promise<HabitatCollection> => {
+  const url = index.files[county]
+  if (!url) throw new Error(`No habitat file for county: ${county}`)
 
-  const data = (await habitatsRes.json()) as unknown
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Habitats (${county}): ${res.status}`)
 
-  // Validate it's the right shape
+  const data = (await res.json()) as unknown
+
   if (!data || typeof data !== 'object' || !('features' in data)) {
-    throw new Error('Invalid habitat data format')
+    throw new Error(`Invalid habitat data format for county: ${county}`)
   }
 
-  const habitatsData = data as HabitatCollection
-  console.log('Loaded:', habitatsData.features?.length, 'polygons')
-  const geometryTypes = new Set(habitatsData.features.map((f) => f.geometry.type))
-  console.log('Geometry types found:', Array.from(geometryTypes))
+  return enrichHabitats(data as HabitatCollection)
+}
 
-  console.log('Converting ITM → WGS84...')
-  habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[]
+export const loadHabitatData = async (): Promise<{
+  // keep signature compatible with existing callers that expect these
+  habitatsData: HabitatCollection | null
+  counties: string[]
+  availableSpecies: string[]
+  index: HabitatIndex
+}> => {
+  const index = await loadHabitatIndex()
 
-  habitatsData.features?.forEach((f) => {
-    const raw = f.properties.NS_SPECIES ?? f.properties.NSNW_DESC ?? ''
-    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] ?? 'Unknown'
-    f.properties._centroid = getCentroid(f.geometry.coordinates)
-    f.properties._genus = getGenusFromSpecies(f.properties.cleanedSpecies)
-  })
-
-  const speciesCounts: Record<string, number> = {}
-  habitatsData.features.forEach((f) => {
-    const sp = f.properties.cleanedSpecies
-    speciesCounts[sp] = (speciesCounts[sp] || 0) + 1
-  })
-  console.log('Species distribution:', speciesCounts)
-
-  const genera = new Set<string>()
-  habitatsData.features.forEach((f) => {
-    const genus = f.properties._genus
-    if (genus) genera.add(genus)
-  })
-
-  const speciesList = Array.from(genera).sort()
-  const allCounties = deriveCounties(habitatsData)
   return {
-    habitatsData,
-    // counties: ['All', ...allCounties] - force County selection for perf bump
-    counties: allCounties,
-    availableSpecies: speciesList,
+    habitatsData: null, // habitats now loaded per-county
+    counties: index.counties,
+    availableSpecies: index.availableSpecies,
+    index,
   }
 }
 

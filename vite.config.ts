@@ -5,11 +5,13 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const repo = process.env.GITHUB_REPOSITORY?.split('/')[1]
 
 export default defineConfig(({ mode }) => {
   const analyze = mode === 'analyze' || process.env.ANALYZE === 'true'
 
   return {
+    base: repo ? `/${repo}/` : '/',
     plugins: [
       react(),
       ...(analyze

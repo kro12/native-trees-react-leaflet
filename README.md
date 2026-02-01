@@ -1,6 +1,12 @@
 # Native Trees Map
 
 [![CI](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml/badge.svg)](https://github.com/kro12/native-trees-react-leaflet/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://kro12.github.io/native-trees-react-leaflet/)
+
+<p align="center">
+  <img src="docs/hero.png" alt="Native Trees Map – interactive habitat explorer" />
+  <em>Interactive exploration of Ireland’s ancient woodland habitats (Leaflet + React)</em>
+</p>
 
 An interactive map-based application for exploring ancient woodland and native tree habitats.  
 The project visualises geospatial habitat data, allowing users to filter by county and species, inspect individual sites, and explore data at different zoom levels.

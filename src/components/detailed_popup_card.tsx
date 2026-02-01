@@ -1,6 +1,6 @@
 import type { Feature, Geometry } from 'geojson'
 import type { SpeciesInfo } from '../constants'
-import { getColorForSpecies } from '../utils'
+import { getColorForSpecies, withBaseUrl } from '../utils'
 
 interface HabitatProperties {
   cleanedSpecies?: string
@@ -43,7 +43,7 @@ const DetailedPopupCard = ({ feature, speciesInfo }: Props) => {
       {info && (
         <>
           <img
-            src={info.image}
+            src={withBaseUrl(info.image)}
             alt={species}
             style={{
               width: '100%',

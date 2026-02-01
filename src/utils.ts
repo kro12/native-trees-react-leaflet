@@ -14,6 +14,13 @@ proj4.defs(
   '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 +ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs'
 )
 
+// need this when served after deplpoyment - as Vite will auto handle asset urls, but we gotta take care of regular urls
+const withBaseUrl = (path: string): string => {
+  const base = import.meta.env.BASE_URL
+  const clean = path.replace(/^\/+/, '')
+  return `${base}${clean}`
+}
+
 interface HabitatIndex {
   counties: string[]
   availableSpecies: string[]
@@ -21,7 +28,7 @@ interface HabitatIndex {
 }
 
 const loadHabitatIndex = async (): Promise<HabitatIndex> => {
-  const res = await fetch('/data/index.json')
+  const res = await fetch(withBaseUrl(`/data/index.json`))
   if (!res.ok) throw new Error(`Habitat index: ${res.status}`)
   return (await res.json()) as HabitatIndex
 }
@@ -158,7 +165,8 @@ const loadHabitatsForCounty = async (
   county: string,
   index: HabitatIndex
 ): Promise<HabitatCollection> => {
-  const url = index.files[county]
+  const file = index.files[county]
+  const url = withBaseUrl(file)
   if (!url) throw new Error(`No habitat file for county: ${county}`)
 
   const res = await fetch(url)
@@ -215,5 +223,6 @@ export {
   loadHabitatsForCounty,
   loadHabitatData,
   loadHabitatIndex,
+  withBaseUrl,
   type HabitatIndex,
 }

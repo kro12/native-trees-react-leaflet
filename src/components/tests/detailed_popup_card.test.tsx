@@ -7,6 +7,7 @@ import type { SpeciesInfo } from '../../constants'
 
 vi.mock('../../utils', () => ({
   getColorForSpecies: vi.fn(() => 'rgb(1, 2, 3)'),
+  withBaseUrl: (path: string) => path,
 }))
 
 import { getColorForSpecies } from '../../utils'

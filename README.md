@@ -11,7 +11,8 @@
 An interactive map-based application for exploring ancient woodland and native tree habitats.  
 The project visualises geospatial habitat data, allowing users to filter by county and species, inspect individual sites, and explore data at different zoom levels.
 
-This repository focuses on clarity, correctness, and maintainability across UI, state management, data handling, and tooling.
+This repository focuses on clarity and maintainability across UI architecture, state management, data handling, and tooling.
+It is intentionally engineering-focused (typing, tests, refactoring safety, and code organisation) rather than a polished UI/visual design showcase.
 
 ---
 

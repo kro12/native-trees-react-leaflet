@@ -1,0 +1,147 @@
+import SpeciesFilter from './species_filter'
+
+import type { useControlPanelLogic } from '../hooks/useControlPanelLogic'
+
+interface Props {
+  controlPanel: ReturnType<typeof useControlPanelLogic>
+  currentZoom: number
+}
+
+const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
+  const {
+    panelPosition,
+    handlePanelMouseEnter,
+    handlePanelMouseLeave,
+    handleMouseDown,
+    selectedCounty,
+    setSelectedCounty,
+    panelDisabled,
+    isLoadingIndex,
+    isLoadingCounty,
+    counties,
+    filteredHabitats,
+    selectedSpecies,
+    availableSpecies,
+    speciesDropdownOpen,
+    setSpeciesDropdownOpen,
+    toggleAllSpecies,
+    toggleSpecies,
+    baseLayer,
+    setBaseLayer,
+    flash,
+    isFlashing,
+  } = controlPanel
+  return (
+    <div
+      className="map-controls-left leaflet-control"
+      style={{
+        left: `${panelPosition.x}px`,
+        top: `${panelPosition.y}px`,
+      }}
+    >
+      <div
+        className="control-panel"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest('.drag-handle')) {
+            e.stopPropagation()
+          }
+        }}
+        onMouseEnter={handlePanelMouseEnter}
+        onMouseLeave={handlePanelMouseLeave}
+      >
+        <div
+          className="drag-handle leaflet-drag-target"
+          onMouseDown={handleMouseDown}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <div className="drag-dots"></div>
+          <h3 className="panel-title">Ancient Woodland Inventory 2010</h3>
+        </div>
+
+        <div className="control-section">
+          <label htmlFor="county-select">County</label>
+          <select
+            id="county-select"
+            value={selectedCounty}
+            disabled={panelDisabled}
+            onChange={(e) => setSelectedCounty(e.target.value)}
+          >
+            <option value="">
+              {isLoadingIndex ? '-- Loading counties... --' : '-- Select a County --'}
+            </option>
+            {counties.map((c: string) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!selectedCounty || selectedCounty === '' ? (
+          <div className="info-text">Select a county to view sites</div>
+        ) : isLoadingCounty ? (
+          <div className="info-text">Loading sites…</div>
+        ) : (
+          <div className="site-count-badge">
+            {filteredHabitats?.features?.length ?? 0} sites found
+          </div>
+        )}
+
+        <div className="control-section">
+          <SpeciesFilter
+            selectedSpecies={selectedSpecies}
+            availableSpecies={availableSpecies}
+            speciesDropdownOpen={speciesDropdownOpen}
+            setSpeciesDropdownOpen={setSpeciesDropdownOpen}
+            toggleAllSpecies={toggleAllSpecies}
+            toggleSpecies={toggleSpecies}
+            disabled={panelDisabled}
+          />
+        </div>
+
+        <div className="control-section">
+          <label>Base Map</label>
+          <div className="layer-buttons">
+            <button
+              className={`layer-btn ${baseLayer === 'street' ? 'active' : ''}`}
+              onClick={() => setBaseLayer('street')}
+              disabled={panelDisabled}
+            >
+              Street
+            </button>
+            <button
+              className={`layer-btn ${baseLayer === 'satellite' ? 'active' : ''}`}
+              onClick={() => setBaseLayer('satellite')}
+              disabled={panelDisabled}
+            >
+              Satellite
+            </button>
+            <button
+              className={`layer-btn ${baseLayer === 'terrain' ? 'active' : ''}`}
+              onClick={() => setBaseLayer('terrain')}
+              disabled={panelDisabled}
+            >
+              Terrain
+            </button>
+          </div>
+        </div>
+
+        {selectedCounty &&
+          selectedCounty !== '' &&
+          currentZoom >= 11 &&
+          (filteredHabitats?.features?.length ?? 0) > 0 && (
+            <button
+              className="highlight-btn-full"
+              onClick={flash}
+              disabled={panelDisabled || isFlashing}
+            >
+              {isFlashing ? 'Highlighting...' : '💡 Highlight All Sites'}
+            </button>
+          )}
+      </div>
+    </div>
+  )
+}
+
+export default ControlPanel

@@ -225,4 +225,5 @@ export {
   loadHabitatIndex,
   withBaseUrl,
   type HabitatIndex,
+  type HabitatCollection,
 }

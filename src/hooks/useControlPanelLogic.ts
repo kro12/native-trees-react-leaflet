@@ -1,26 +1,30 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type L from 'leaflet'
-import {
-  loadHabitatData,
-  loadHabitatsForCounty,
-  type HabitatIndex,
-  type HabitatCollection,
-} from '../utils'
+import { loadHabitatsForCounty, type HabitatIndex, type HabitatCollection } from '../utils'
 import { useFlashPolygons } from './useFlashPolygons'
 
 interface Props {
   mapRef: React.RefObject<L.Map | null>
   currentZoom: number
   geoJsonRef: React.RefObject<L.GeoJSON | null>
+  habitatIndex: HabitatIndex | null
+  counties: string[]
+  availableSpecies: string[]
+  isLoadingIndex: boolean
 }
 
-export const useControlPanelLogic = ({ mapRef, currentZoom, geoJsonRef }: Props) => {
+export const useControlPanelLogic = ({
+  mapRef,
+  currentZoom,
+  geoJsonRef,
+  counties,
+  habitatIndex,
+  availableSpecies,
+  isLoadingIndex,
+}: Props) => {
   // State
   const [habitats, setHabitats] = useState<HabitatCollection | null>(null)
-  const [counties, setCounties] = useState<string[]>([])
   const [selectedCounty, setSelectedCounty] = useState('')
-  const [habitatIndex, setHabitatIndex] = useState<HabitatIndex | null>(null)
-  const [isLoadingIndex, setIsLoadingIndex] = useState(true)
   const [isLoadingCounty, setIsLoadingCounty] = useState(false)
   const [baseLayer, setBaseLayer] = useState('satellite')
   const [panelPosition, setPanelPosition] = useState({ x: 50, y: 10 })
@@ -28,7 +32,6 @@ export const useControlPanelLogic = ({ mapRef, currentZoom, geoJsonRef }: Props)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
   // Species filter state
-  const [availableSpecies, setAvailableSpecies] = useState<string[]>([])
   const [selectedSpecies, setSelectedSpecies] = useState<string[]>([])
   const [speciesDropdownOpen, setSpeciesDropdownOpen] = useState(false)
 
@@ -36,29 +39,10 @@ export const useControlPanelLogic = ({ mapRef, currentZoom, geoJsonRef }: Props)
 
   const { flash, isFlashing } = useFlashPolygons(geoJsonRef)
 
-  // Load index on mount
+  // Initialize selected species when availableSpecies changes
   useEffect(() => {
-    const loadIndex = async () => {
-      try {
-        const {
-          counties: countyList,
-          availableSpecies: speciesList,
-          index,
-        } = await loadHabitatData()
-
-        setHabitatIndex(index)
-        setCounties(countyList)
-        setAvailableSpecies(speciesList)
-        setSelectedSpecies(speciesList)
-      } catch (err) {
-        console.error('Failed to load habitat index:', err)
-      } finally {
-        setIsLoadingIndex(false)
-      }
-    }
-
-    void loadIndex()
-  }, [])
+    setSelectedSpecies(availableSpecies)
+  }, [availableSpecies])
 
   // Load habitats when county changes
   useEffect(() => {
@@ -242,8 +226,6 @@ export const useControlPanelLogic = ({ mapRef, currentZoom, geoJsonRef }: Props)
     // State values
     panelPosition,
     selectedCounty,
-    panelDisabled,
-    isLoadingIndex,
     isLoadingCounty,
     counties,
     filteredHabitats,
@@ -266,5 +248,7 @@ export const useControlPanelLogic = ({ mapRef, currentZoom, geoJsonRef }: Props)
     handleMouseDown,
     handlePanelMouseEnter,
     handlePanelMouseLeave,
+
+    disabled: panelDisabled,
   }
 }

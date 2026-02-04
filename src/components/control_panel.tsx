@@ -5,18 +5,19 @@ import type { useControlPanelLogic } from '../hooks/useControlPanelLogic'
 interface Props {
   controlPanel: ReturnType<typeof useControlPanelLogic>
   currentZoom: number
+  isLoadingIndex: boolean
 }
 
-const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
+const ControlPanel = ({ controlPanel, currentZoom, isLoadingIndex }: Props) => {
   const {
     panelPosition,
+    disabled,
     handlePanelMouseEnter,
     handlePanelMouseLeave,
     handleMouseDown,
     selectedCounty,
     setSelectedCounty,
-    panelDisabled,
-    isLoadingIndex,
+
     isLoadingCounty,
     counties,
     filteredHabitats,
@@ -64,7 +65,7 @@ const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
           <select
             id="county-select"
             value={selectedCounty}
-            disabled={panelDisabled}
+            disabled={disabled}
             onChange={(e) => setSelectedCounty(e.target.value)}
           >
             <option value="">
@@ -96,7 +97,7 @@ const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
             setSpeciesDropdownOpen={setSpeciesDropdownOpen}
             toggleAllSpecies={toggleAllSpecies}
             toggleSpecies={toggleSpecies}
-            disabled={panelDisabled}
+            disabled={disabled}
           />
         </div>
 
@@ -106,21 +107,21 @@ const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
             <button
               className={`layer-btn ${baseLayer === 'street' ? 'active' : ''}`}
               onClick={() => setBaseLayer('street')}
-              disabled={panelDisabled}
+              disabled={disabled}
             >
               Street
             </button>
             <button
               className={`layer-btn ${baseLayer === 'satellite' ? 'active' : ''}`}
               onClick={() => setBaseLayer('satellite')}
-              disabled={panelDisabled}
+              disabled={disabled}
             >
               Satellite
             </button>
             <button
               className={`layer-btn ${baseLayer === 'terrain' ? 'active' : ''}`}
               onClick={() => setBaseLayer('terrain')}
-              disabled={panelDisabled}
+              disabled={disabled}
             >
               Terrain
             </button>
@@ -134,7 +135,7 @@ const ControlPanel = ({ controlPanel, currentZoom }: Props) => {
             <button
               className="highlight-btn-full"
               onClick={flash}
-              disabled={panelDisabled || isFlashing}
+              disabled={disabled || isFlashing}
             >
               {isFlashing ? 'Highlighting...' : '💡 Highlight All Sites'}
             </button>

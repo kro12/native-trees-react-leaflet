@@ -110,6 +110,7 @@ src/
 ├─ assets/
 ├─ components/
 │  ├─ context_menu.tsx
+│  ├─ control_panel.tsx (Presentational component (no logic))
 │  ├─ county_zoomer.tsx
 │  ├─ detailed_popup_card.tsx
 │  ├─ habitat_markers.tsx
@@ -117,25 +118,64 @@ src/
 │  ├─ species_filter.tsx
 │  ├─ zoom_tracker.tsx
 │  └─ tests/
+│     ├─ control_panel.test.tsx (Component-level UI tests)
+│     └─ [other component tests]
 ├─ hooks/
 │  ├─ useContextMenu.tsx
+│  ├─ useControlPanelLogic.ts (County loading + filtering logic)
 │  └─ useFlashPolygons.tsx
 ├─ tests/
 │  ├─ fixtures/
 │  │  └─ habitats.ts
-│  └─ App.test.tsx
+│  └─ App.test.tsx (Integration tests - index + wiring)
 ├─ constants.ts
-├─ utils.ts
+├─ utils.ts (loadHabitatData, loadHabitatsForCounty)
 ├─ utils.test.ts
-├─ App.tsx
+├─ App.tsx (Loads index, orchestrates map + controls)
 ├─ main.tsx
 └─ index.css
 ```
 
+---
+
+### Architecture Overview
+
+The application follows a **separation of concerns** approach:
+
+**`App.tsx`** – Application orchestrator
+
+- Loads the habitat **index** on mount (list of counties, species, file paths)
+- Wires together map components (MapContainer, TileLayer, GeoJSON, MarkerClusterGroup)
+- Manages zoom state and polygon pulse animations
+- Handles context menus and popup rendering via React portals
+- Delegates control panel logic to `useControlPanelLogic`
+
+**`useControlPanelLogic`** – Control panel state & data loading hook
+
+- **County habitat loading**: fetches GeoJSON for selected county on demand
+- Filtering logic (county selection, species filtering)
+- Base layer selection (street/satellite/terrain)
+- Panel UI state (position, dragging, dropdown visibility)
+- Flash/highlight animations for polygons
+- Returns a stable API consumed by `ControlPanel`
+
+**`ControlPanel`** – Pure presentational component
+
+- Renders county selector, species filter, base layer buttons, site counts
+- Receives all state and handlers via `controlPanel` prop
+- No data fetching or business logic
+- Fully testable in isolation with mocked `controlPanel` data
+
+This separation keeps responsibilities clear:
+
+- `App` owns **application-level data** (index loading, map orchestration)
+- `useControlPanelLogic` owns **control panel domain logic** (county data loading, filtering, panel state)
+- `ControlPanel` owns **presentation only** (rendering UI based on provided state)
+
 **Notes:**
 
 - `constants.ts` contains shared domain types and configuration.
-- `utils.ts` holds pure data/logic helpers.
+- `utils.ts` holds pure data/logic helpers (loading functions, styling, colors).
 - Test fixtures live alongside tests but remain strongly typed.
 - Leaflet-specific behaviour is isolated to keep React components predictable.
 
@@ -143,22 +183,33 @@ src/
 
 ## Testing Strategy
 
-Testing is layered rather than exhaustive:
+Testing follows the application's architecture layers:
 
-- **Unit tests**
-  - Pure utilities and data transformation logic
+**Unit tests**
 
-- **Component tests**
-  - Focused tests for individual UI components
+- Pure utilities and data transformation logic (`utils.test.ts`)
+- No mocking required – just inputs and outputs
 
-- **Integration tests**
-  - App-level tests that exercise realistic user flows:
-    - loading data
-    - selecting counties
-    - switching map layers
-    - zoom-triggered rendering behaviour
+**Component tests**
 
-Mocks are used selectively to avoid testing Leaflet internals while still validating integration points.
+- `ControlPanel` UI logic in isolation
+- Tests user interactions (county selection, species filtering, base layer switching)
+- Mocks `useControlPanelLogic` to provide controlled state
+
+**Integration tests**
+
+- App-level orchestration tests (`App.test.tsx`)
+- Verifies map wiring and component composition
+- Tests that `App` correctly uses `useControlPanelLogic`
+- Mocks Leaflet/react-leaflet to avoid testing third-party library internals
+
+**What we DON'T test:**
+
+- Leaflet's internal rendering behavior
+- Third-party clustering algorithms
+- Browser geospatial APIs
+
+This layered approach keeps tests fast, focused, and resilient to refactoring.
 
 The project uses a lightweight GitHub Actions workflow to ensure formatting, linting, type safety, tests, and builds remain green.
 
@@ -169,18 +220,26 @@ The project uses a lightweight GitHub Actions workflow to ensure formatting, lin
 The original NSNW dataset is relatively large (~14 MB as a single GeoJSON file).  
 To keep initial load times fast and interactions responsive, the application uses a **two-phase loading approach**:
 
-1. **Index load (startup)**
-   - A lightweight index is loaded on application start
-   - Contains:
-     - Available counties
-     - Available species
-     - Metadata required to request county data
-   - This keeps the initial render fast and predictable
+### Two-phase data loading
 
-2. **County-level loading (on demand)**
-   - Habitat polygons are stored as separate GeoJSON files per county
-   - Selecting a county triggers a fetch for that county only
-   - Typical file sizes are ~0.5–1.3 MB per county
+**Phase 1: Index (App responsibility)**
+
+- Loads on mount: list of counties, species, file paths
+- Lightweight (~2-5KB)
+- Required before control panel can function
+- This keeps the initial render fast and predictable
+
+**Phase 2: County habitats (useControlPanelLogic responsibility)**
+
+- Loads when user selects a county
+- Per-county GeoJSON files (~0.5-1.3 MB each)
+- Only fetches what's needed
+- Typical file sizes enable fast county switching
+
+This separation is architectural:
+
+- `App` owns application-level bootstrap data
+- `useControlPanelLogic` owns user-triggered data fetching
 
 This approach avoids downloading unused data, improves perceived performance, and scales cleanly if additional datasets are introduced later.
 

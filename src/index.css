@@ -203,6 +203,7 @@ textarea {
 /* =========================
    Cluster marker styling
    ========================= */
+
 .leaflet-marker-icon {
   display: block !important;
 }
@@ -238,7 +239,12 @@ textarea {
     0 0 16px rgba(245, 158, 11, 0.45),
     0 0 28px rgba(245, 158, 11, 0.25);
   display: grid;
+  transform: translateY(-3px);
+  border-color: rgba(245, 158, 11, 0.8); /* More opaque orange */
   place-items: center;
+  transition:
+    box-shadow 120ms ease-out,
+    transform 120ms ease-out;
 }
 
 .custom-cluster .cluster-count {
@@ -249,14 +255,8 @@ textarea {
   letter-spacing: 0.2px;
 }
 
-.custom-cluster .cluster-bubble {
-  transition:
-    box-shadow 120ms ease-out,
-    transform 120ms ease-out;
-}
-
 .custom-cluster:hover .cluster-bubble {
-  transform: translateY(-1px);
+  transform: translateY(-1px) scale(1.05);
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.26),
     0 0 0 2px rgba(255, 255, 255, 0.7),
@@ -317,8 +317,9 @@ textarea {
    Species filter dropdown
    ========================= */
 .species-filter {
-  display: inline-block;
+  display: block;
   position: relative;
+  width: 100%;
 }
 
 .species-dropdown {
@@ -326,17 +327,18 @@ textarea {
   position: absolute;
   top: 100%;
   left: 0;
+  right: 0;
   background: #ffffff;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   z-index: 1001;
-  min-width: 250px;
   max-height: 300px;
   overflow-y: auto;
   color: #000;
   text-align: left;
+  margin-top: 4px;
 }
 
 .species-dropdown.open {
@@ -366,7 +368,6 @@ textarea {
   }
 }
 
-/* Cro */
 /* =========================
    Map controls (left side floating panel)
    ========================= */
@@ -395,8 +396,8 @@ textarea {
   font-size: 15px;
   font-weight: 700;
   color: #111827;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f59e0b;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .control-section {
@@ -518,33 +519,6 @@ textarea {
   cursor: not-allowed;
 }
 
-/* Adjust species filter for vertical layout */
-.species-filter {
-  display: block;
-  position: relative;
-  width: 100%;
-}
-
-.species-dropdown {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  z-index: 1001;
-  max-height: 300px;
-  overflow-y: auto;
-  color: #000;
-  text-align: left;
-  margin-top: 4px;
-}
-
-/* Draggable controls */
 /* Drag handle */
 .drag-handle {
   cursor: move;
@@ -576,15 +550,6 @@ textarea {
     6px 6px;
   opacity: 0.5;
   flex-shrink: 0;
-}
-
-.panel-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
-  padding-bottom: 0;
-  border-bottom: none;
 }
 
 /* =========================

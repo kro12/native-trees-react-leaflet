@@ -69,8 +69,8 @@ function App() {
       <MapContainer
         center={DEFAULT_MAP_COORDS}
         zoom={8}
-        style={{ height: '100vh', width: '100%' }}
-        zoomControl={false}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        zoomControl={true}
       >
         <MapRefCapture mapRef={mapRef} />
         <ZoomTracker setCurrentZoom={setCurrentZoom} />
@@ -89,10 +89,10 @@ function App() {
             const size = count < 10 ? 34 : count < 100 ? 38 : 42
             return L.divIcon({
               html: `
-                <div class="cluster-inner">
-                  ${count}
-                </div>
-              `,
+      <div class="cluster-bubble" style="width: ${size}px; height: ${size}px;">
+        <span class="cluster-count">${count}</span>
+      </div>
+    `,
               className: 'custom-cluster',
               iconSize: [size, size],
             })

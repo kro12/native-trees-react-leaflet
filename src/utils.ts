@@ -2,16 +2,27 @@ import {
   speciesMap,
   darkerShadeColourMap,
   treeColors,
+  COUNTIES_GEOJSON_URL,
+  type CountiesGeoJSON,
+  type CountyProperties,
   type HabitatCollection,
   type HabitatFeature,
+  type CountyFeature,
 } from './constants'
-import type { Feature, Position } from 'geojson'
+import type { Feature, Geometry, GeoJsonProperties, Position } from 'geojson'
+
 import proj4 from 'proj4'
 
 // Irish Grid projection
 proj4.defs(
   'EPSG:29903',
   '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 +ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs'
+)
+
+// Irish Transverse Mercator (ITM)
+proj4.defs(
+  'EPSG:2157',
+  '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=0.99982 +x_0=600000 +y_0=750000 +ellps=GRS80 +units=m +no_defs'
 )
 
 // need this when served after deplpoyment - as Vite will auto handle asset urls, but we gotta take care of regular urls
@@ -39,14 +50,17 @@ const enrichHabitats = (habitatsData: HabitatCollection): HabitatCollection => {
   console.log('Geometry types found:', Array.from(geometryTypes))
 
   console.log('Converting ITM → WGS84...')
-  habitatsData.features = habitatsData.features.map(reprojectFeature) as HabitatFeature[]
 
-  habitatsData.features?.forEach((f) => {
-    const raw = f.properties.NS_SPECIES ?? f.properties.NSNW_DESC ?? ''
-    f.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] ?? 'Unknown'
-    f.properties._centroid = getCentroid(f.geometry.coordinates)
-    f.properties._genus = getGenusFromSpecies(f.properties.cleanedSpecies)
-  })
+  // Chain reprojection + enrichment with proper typing
+  habitatsData.features = habitatsData.features
+    .map((feature: HabitatFeature) => reprojectFeature(feature))
+    .map((feature: HabitatFeature) => {
+      const raw = feature.properties.NS_SPECIES ?? feature.properties.NSNW_DESC ?? ''
+      feature.properties.cleanedSpecies = cleanTreeSpecies([raw])[0] ?? 'Unknown'
+      feature.properties._centroid = getCentroid(feature.geometry.coordinates)
+      feature.properties._genus = getGenusFromSpecies(feature.properties.cleanedSpecies)
+      return feature
+    })
 
   const speciesCounts: Record<string, number> = {}
   habitatsData.features.forEach((f) => {
@@ -93,26 +107,76 @@ const cleanTreeSpecies = (raw: string[]): string[] => {
     .filter(Boolean)
 }
 
-const convertCoord = (coord: Position): Position => {
+const convertCoord = (coord: Position, fromEPSG = 'EPSG:29903'): Position => {
   try {
-    return proj4('EPSG:29903', 'EPSG:4326', coord)
+    return proj4(fromEPSG, 'EPSG:4326', coord)
   } catch (e) {
     console.error('Conversion failed:', coord, e)
     return coord
   }
 }
 
-const reprojectFeature = (feature: Feature): Feature => {
+const getCentroid = (coordinates: Position[][]): Position => {
+  const ring = coordinates[0]
+  let latSum = 0
+  let lngSum = 0
+  ring.forEach((coord) => {
+    lngSum += coord[0]
+    latSum += coord[1]
+  })
+  return [lngSum / ring.length, latSum / ring.length]
+}
+
+/**
+ * reprojectFeature
+ *
+ * Purpose:
+ * - Reproject a GeoJSON Feature from a source CRS (fromEPSG) to WGS84 (EPSG:4326),
+ *   while preserving both the feature's properties type and geometry type.
+ *
+ * Key changes and rationale:
+ * 1) Introduced generic type parameters <G, P> for geometry and properties.
+ *    - G extends GeoJSON.Geometry to allow any valid geometry type (Point, Polygon, etc.)
+ *    - P for properties interface (CountyProperties, HabitatProperties, etc.)
+ *    This ensures we preserve the exact feature shape through reprojection.
+ *
+ * 2) Preserve type safety across the reprojection pipeline:
+ *    - By keeping both generics, downstream code that expects
+ *      Feature<Polygon, HabitatProperties> or Feature<Geometry, CountyProperties>
+ *      continues to type-check without widening or unsafe casts.
+ *
+ * 3) Flexible source CRS handling:
+ *    - The fromEPSG parameter defaults to 'EPSG:29903' (Irish Transverse Mercator)
+ *      for backward compatibility with existing habitat data workflows.
+ *    - Counties use 'EPSG:2157' (ITM - Irish Transverse Mercator 1965).
+ *
+ * 4) Consistent geometry mutation:
+ *    - Mutates coordinates in place for performance.
+ *    - Handles Point, Polygon (rings), and MultiPolygon geometries.
+ *
+ * Usage examples:
+ * - Reproject habitat features (Polygon geometry, HabitatProperties):
+ *   habitatsData.features.map(f => reprojectFeature(f)) // types inferred
+ * - Reproject county features (explicit types):
+ *   reprojectFeature<GeoJSON.Geometry, CountyProperties>(feature, 'EPSG:2157')
+ */
+const reprojectFeature = <G extends Geometry = Geometry, P = GeoJsonProperties>(
+  feature: Feature<G, P>,
+  fromEPSG = 'EPSG:29903'
+): Feature<G, P> => {
   const geom = feature.geometry
   if (!geom) return feature
 
+  // Type-cast coordinates to Position types for strict type safety
   if (geom.type === 'Point') {
-    geom.coordinates = convertCoord(geom.coordinates)
+    geom.coordinates = convertCoord(geom.coordinates, fromEPSG)
   } else if (geom.type === 'Polygon') {
-    geom.coordinates = geom.coordinates.map((ring) => ring.map((coord) => convertCoord(coord)))
+    geom.coordinates = geom.coordinates.map((ring) =>
+      ring.map((coord) => convertCoord(coord, fromEPSG))
+    )
   } else if (geom.type === 'MultiPolygon') {
     geom.coordinates = geom.coordinates.map((polygon) =>
-      polygon.map((ring) => ring.map((coord) => convertCoord(coord)))
+      polygon.map((ring) => ring.map((coord) => convertCoord(coord, fromEPSG)))
     )
   }
 
@@ -148,34 +212,35 @@ const getDarkerShade = (color: string) => {
   return darkerShadeColourMap[color] || '#333333'
 }
 
-const getCentroid = (coordinates: Position[][]) => {
-  const ring = coordinates[0]
-  let latSum = 0
-  let lonSum = 0
-
-  ring.forEach((coord) => {
-    lonSum += coord[0]
-    latSum += coord[1]
-  })
-
-  return [latSum / ring.length, lonSum / ring.length]
-}
+// ideally I would convert all references in source data to lowercase and title case at the point of ingestion, but this is a quick fix to ensure we can handle the existing data with mixed formats
+export const titleCaseCounty = (raw: string | string[]): string =>
+  Array.isArray(raw)
+    ? (raw[0]
+        ?.toLowerCase()
+        .replace(/\b\w/g, (l) => l.toUpperCase())
+        ?.trim() ?? '')
+    : raw
+        .toLowerCase()
+        .replace(/\b\w/g, (l) => l.toUpperCase())
+        .trim()
 
 const loadHabitatsForCounty = async (
   county: string,
   index: HabitatIndex
 ): Promise<HabitatCollection> => {
-  const file = index.files[county]
+  const standardisedCounty = titleCaseCounty(county)
+  const file = index.files[standardisedCounty]
   const url = withBaseUrl(file)
-  if (!url) throw new Error(`No habitat file for county: ${county}`)
+  console.log(`Loading habitats for county: ${standardisedCounty} from URL: ${url}`)
+  if (!url) throw new Error(`No habitat file for county: ${standardisedCounty}`)
 
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Habitats (${county}): ${res.status}`)
+  if (!res.ok) throw new Error(`Habitats (${standardisedCounty}): ${res.status}`)
 
   const data = (await res.json()) as unknown
 
   if (!data || typeof data !== 'object' || !('features' in data)) {
-    throw new Error(`Invalid habitat data format for county: ${county}`)
+    throw new Error(`Invalid habitat data format for standardisedCounty: ${standardisedCounty}`)
   }
 
   return enrichHabitats(data as HabitatCollection)
@@ -212,6 +277,29 @@ const deriveStyleFeature = (shouldPulse: boolean, feature?: HabitatFeature): L.P
   }
 }
 
+const loadCountiesData = async (): Promise<CountiesGeoJSON> => {
+  try {
+    const url = withBaseUrl(COUNTIES_GEOJSON_URL)
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.warn(`Failed to load counties data: ${res.status}`)
+      return { type: 'FeatureCollection', features: [] }
+    }
+    const data = (await res.json()) as CountiesGeoJSON
+
+    // Reproject counties from EPSG:2157 (ITM) to WGS84
+    // Explicitly preserve CountyProperties
+    data.features = data.features.map((feature) =>
+      reprojectFeature<Geometry, CountyProperties>(feature, 'EPSG:2157')
+    ) as CountyFeature[]
+
+    return data
+  } catch (error) {
+    console.error('Error loading counties data:', error)
+    return { type: 'FeatureCollection', features: [] }
+  }
+}
+
 export {
   cleanTreeSpecies,
   reprojectFeature,
@@ -224,6 +312,7 @@ export {
   loadHabitatData,
   loadHabitatIndex,
   withBaseUrl,
+  loadCountiesData,
   type HabitatIndex,
   type HabitatCollection,
 }

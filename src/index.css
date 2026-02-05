@@ -649,3 +649,28 @@ textarea {
 .context-menu li:hover {
   background-color: #f5f5f5;
 }
+
+/* Add to your CSS */
+.leaflet-container .county-hover {
+  transition: all 0.2s ease;
+}
+
+.map-controls-left {
+  z-index: 1000;
+}
+
+.leaflet-control-custom a {
+  box-sizing: border-box;
+  display: block;
+  width: 26px;
+  height: 26px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 20px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.leaflet-control-custom a:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(0, 0, 0, 0.3);
+}

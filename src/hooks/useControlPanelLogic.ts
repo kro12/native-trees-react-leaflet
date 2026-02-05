@@ -57,7 +57,7 @@ export const useControlPanelLogic = ({
       setIsLoadingCounty(true)
 
       try {
-        const habitatsData = await loadHabitatsForCounty(selectedCounty, habitatIndex)
+        const habitatsData = await loadHabitatsForCounty(selectedCounty.toLowerCase(), habitatIndex)
         setHabitats(habitatsData)
       } catch (err) {
         console.error(`Failed to load habitats for county "${selectedCounty}":`, err)

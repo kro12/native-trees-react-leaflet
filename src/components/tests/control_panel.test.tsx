@@ -104,7 +104,9 @@ describe('ControlPanel Component', () => {
         <ControlPanel controlPanel={mockControlPanel} currentZoom={8} isLoadingIndex={false} />
       )
 
-      expect(screen.getByText('Select a county to view sites')).toBeInTheDocument()
+      expect(
+        screen.getByText('Select option/click County bounds to view sites')
+      ).toBeInTheDocument()
     })
 
     it('should show loading message when loading county data', () => {

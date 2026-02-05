@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import L from 'leaflet'
+
 import {
   speciesInfo,
   titleLayers,
@@ -10,8 +11,16 @@ import {
   DEFAULT_MAP_COORDS,
   type HabitatFeature,
   type MarkerClusterType,
+  type CountiesGeoJSON,
+  type CountyFeature,
 } from './constants'
-import { deriveStyleFeature, loadHabitatData, type HabitatIndex } from './utils'
+import {
+  deriveStyleFeature,
+  loadHabitatData,
+  loadCountiesData,
+  type HabitatIndex,
+  titleCaseCounty,
+} from './utils'
 import 'leaflet/dist/leaflet.css'
 import CountyZoomer from './components/county_zoomer'
 import ZoomTracker from './components/zoom_tracker'
@@ -19,6 +28,7 @@ import DetailedPopupCard from './components/detailed_popup_card'
 import MapRefCapture from './components/map_ref_capture'
 import HabitatMarkers from './components/habitat_markers'
 import ControlPanel from './components/control_panel'
+import HomeControl from './components/home_control'
 import { useContextMenu } from './hooks/useContextMenu'
 import ContextMenu from './components/context_menu'
 import { useControlPanelLogic } from './hooks/useControlPanelLogic'
@@ -30,6 +40,8 @@ function App() {
   const [isLoadingIndex, setIsLoadingIndex] = useState(true)
   const [currentZoom, setCurrentZoom] = useState(8)
   const [shouldPulse, setShouldPulse] = useState(false)
+  const [countiesGeoJSON, setCountiesGeoJSON] = useState<CountiesGeoJSON | null>(null)
+  const [hoveredCounty, setHoveredCounty] = useState<string | null>(null)
   const prevZoomRef = useRef(8)
   const mapRef = useRef<L.Map | null>(null)
   const geoJsonRef = useRef<L.GeoJSON | null>(null)
@@ -63,7 +75,7 @@ function App() {
     prevZoomRef.current = currentZoom
   }, [currentZoom])
 
-  // Load habitat index on mount (app-level concern)
+  // Load counties data with habitat data
   useEffect(() => {
     const loadIndex = async () => {
       try {
@@ -76,17 +88,48 @@ function App() {
         setHabitatIndex(index)
         setCounties(countyList)
         setAvailableSpecies(speciesList)
+
+        // Load counties GeoJSON
+        const countiesData = await loadCountiesData()
+        setCountiesGeoJSON(countiesData)
       } catch (err) {
-        console.error('Failed to load habitat index:', err)
+        console.error('Failed to load data:', err)
       } finally {
         setIsLoadingIndex(false)
       }
     }
-    void loadIndex()
+
+    loadIndex().catch((err) => {
+      console.error('Failed to load data:', err)
+      setIsLoadingIndex(false)
+    })
   }, [])
+
+  // County hover handler
+  const onCountyHover = useCallback((feature: CountyFeature) => {
+    setHoveredCounty(feature.properties.COUNTY_NAME ?? feature.properties.COUNTY ?? null)
+  }, [])
+
+  const onCountyLeave = useCallback(() => {
+    setHoveredCounty(null)
+  }, [])
+
+  const handleHome = useCallback(() => {
+    // Clear selection so habitats become null and markers/polygons disappear
+    controlPanel.setSelectedCounty('') // your hook treats '' as “no county” [file:2]
+
+    // Optional: reset species filter back to “all”
+    // controlPanel.setSelectedSpecies(availableSpecies)
+
+    // Reset map view
+    mapRef.current?.setView(DEFAULT_MAP_COORDS, 8)
+  }, [controlPanel, mapRef])
+
+  if (mapRef) console.log('MZoom Lvl', mapRef?.current?.getZoom())
 
   // Type-safe access to tile layer
   const currentTileLayer = titleLayers[controlPanel.baseLayer as keyof typeof titleLayers]
+  console.log('filteredHabitats:', controlPanel.filteredHabitats)
 
   return (
     <>
@@ -110,7 +153,7 @@ function App() {
           selectedCounty={controlPanel.selectedCounty}
           filteredHabitats={controlPanel.filteredHabitats}
         />
-
+        <HomeControl onHome={handleHome} />
         <TileLayer attribution={currentTileLayer.attribution} url={currentTileLayer.url} />
 
         <MarkerClusterGroup
@@ -137,6 +180,56 @@ function App() {
             selectedSpecies={controlPanel.selectedSpecies}
           />
         </MarkerClusterGroup>
+        {countiesGeoJSON &&
+          currentZoom < 11 &&
+          (() => {
+            console.log('Rendering counties GeoJSON layer', countiesGeoJSON)
+            return null
+          })()}
+        {countiesGeoJSON && currentZoom < 11 && !controlPanel.filteredHabitats && (
+          <GeoJSON
+            data={countiesGeoJSON}
+            style={(feature) => {
+              if (!feature) {
+                return {
+                  fillColor: '#3388ff',
+                  weight: 2,
+                  opacity: 1,
+                  color: '#0066cc',
+                  fillOpacity: 0.2,
+                }
+              }
+              // react-leaflet types feature.properties as any by design
+              /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+              const isHovered =
+                hoveredCounty === feature.properties.COUNTY_NAME ||
+                hoveredCounty === feature.properties.COUNTY
+              /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+              return {
+                fillColor: isHovered ? '#ffeb3b' : '#3388ff',
+                weight: isHovered ? 4 : 2,
+                opacity: 1,
+                color: isHovered ? '#f57f17' : '#0066cc',
+                fillOpacity: isHovered ? 0.7 : 0.2,
+              }
+            }}
+            onEachFeature={(feature: CountyFeature, layer) => {
+              layer.on({
+                mouseover: () => onCountyHover(feature),
+                mouseout: onCountyLeave,
+                // click: () => onCountyClick(feature),
+                click: () => {
+                  const county = feature?.properties?.COUNTY ?? ''
+                  controlPanel.setSelectedCounty(titleCaseCounty(county))
+                },
+              })
+
+              layer.bindTooltip(
+                feature.properties.COUNTY_NAME ?? feature.properties.COUNTY ?? 'County'
+              )
+            }}
+          />
+        )}
 
         {currentZoom >= 11 && controlPanel.filteredHabitats && (
           <GeoJSON

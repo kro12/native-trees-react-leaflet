@@ -66,7 +66,10 @@ const ControlPanel = ({ controlPanel, currentZoom, isLoadingIndex }: Props) => {
             id="county-select"
             value={selectedCounty}
             disabled={disabled}
-            onChange={(e) => setSelectedCounty(e.target.value)}
+            onChange={(e) => {
+              console.log('County selected:', e.target.value)
+              setSelectedCounty(e.target.value)
+            }}
           >
             <option value="">
               {isLoadingIndex ? '-- Loading counties... --' : '-- Select a County --'}
@@ -80,7 +83,7 @@ const ControlPanel = ({ controlPanel, currentZoom, isLoadingIndex }: Props) => {
         </div>
 
         {!selectedCounty || selectedCounty === '' ? (
-          <div className="info-text">Select a county to view sites</div>
+          <div className="info-text">Select option/click County bounds to view sites</div>
         ) : isLoadingCounty ? (
           <div className="info-text">Loading sites…</div>
         ) : (

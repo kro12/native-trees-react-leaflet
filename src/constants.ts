@@ -3,6 +3,7 @@ import type {
   FeatureCollection,
   Position,
   Polygon, // all our Tree data is in Polygon form
+  Geometry,
 } from 'geojson'
 /*
  * Logged the data structure using...
@@ -148,6 +149,17 @@ const darkerShadeColourMap: Record<string, string> = {
 const POLYGON_PULSE_DELAY = 100
 const DEFAULT_MAP_COORDS: LatLngTuple = [53.35, -7.5]
 
+export interface CountyProperties {
+  COUNTY_NAME?: string
+  COUNTY?: string
+  ADMIN_NAME?: string
+}
+
+export type CountyFeature = Feature<Geometry, CountyProperties>
+export type CountiesGeoJSON = FeatureCollection<Geometry, CountyProperties>
+
+const COUNTIES_GEOJSON_URL = '/data/county-bounds.json'
+
 interface TitleLayerConfig {
   url: string
   attribution: string
@@ -214,4 +226,5 @@ export {
   type MarkerClusterType,
   POLYGON_PULSE_DELAY,
   DEFAULT_MAP_COORDS,
+  COUNTIES_GEOJSON_URL,
 }

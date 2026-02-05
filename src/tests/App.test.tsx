@@ -119,6 +119,11 @@ vi.mock('../hooks/useControlPanelLogic', () => ({
   }),
 }))
 
+// Mock HomeControl
+vi.mock('../components/home_control', () => ({
+  default: () => <div data-testid="home-control" />,
+}))
+
 // Mock leaflet
 vi.mock('leaflet', () => ({
   default: {
@@ -209,7 +214,7 @@ describe('App Component', () => {
 
       await waitFor(() => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Failed to load habitat index:',
+          'Failed to load data:', // Changed from 'Failed to load habitat index:'
           expect.any(Error)
         )
       })

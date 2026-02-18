@@ -144,10 +144,10 @@ describe('SpeciesFilter', () => {
     expect(toggleSpecies).toHaveBeenLastCalledWith('Betula')
   })
 
-  it('renders the color swatch with the backgroundColor from treeColors', () => {
-    render(
+  it('renders species checkbox background dynamically from treeColors', () => {
+    const { rerender } = render(
       <SpeciesFilter
-        selectedSpecies={[]}
+        selectedSpecies={[]} // Unchecked first
         availableSpecies={['Alnus']}
         speciesDropdownOpen={true}
         toggleSpecies={vi.fn()}
@@ -157,13 +157,26 @@ describe('SpeciesFilter', () => {
       />
     )
 
-    const label = screen.getByText(/Alnus.*Alder/i).closest('label')
-    expect(label).toBeInTheDocument()
+    let label = screen.getByText(/Alnus.*Alder/i).closest('label')!
+    let checkboxSpan = label!.querySelector('span')!
+    expect(checkboxSpan).toHaveStyle({ backgroundColor: '#f8f9fa' }) // Neutral unchecked
 
-    const swatch = label!.querySelector('span')
-    expect(swatch).toBeInTheDocument()
+    // Rerender checked
+    rerender(
+      <SpeciesFilter
+        selectedSpecies={['Alnus']}
+        availableSpecies={['Alnus']}
+        speciesDropdownOpen={true}
+        toggleSpecies={vi.fn()}
+        toggleAllSpecies={vi.fn()}
+        setSpeciesDropdownOpen={vi.fn()}
+        disabled={false}
+      />
+    )
 
-    expect(swatch).toHaveStyle({ backgroundColor: treeColors.Alnus })
+    label = screen.getByText(/Alnus.*Alder/i).closest('label')!
+    checkboxSpan = label!.querySelector('span')!
+    expect(checkboxSpan).toHaveStyle({ backgroundColor: treeColors.Alnus })
   })
 })
 

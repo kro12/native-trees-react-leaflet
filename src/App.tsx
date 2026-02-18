@@ -165,10 +165,10 @@ function App() {
             const size = count < 10 ? 34 : count < 100 ? 38 : 42
             return L.divIcon({
               html: `
-        <div class="cluster-bubble" style="width: ${size}px; height: ${size}px;">
-          <span class="cluster-count">${count}</span>
-        </div>
-      `,
+                <div class="cluster-bubble" style="width: ${size}px; height: ${size}px;">
+                  <span class="cluster-count">${count}</span>
+                </div>
+              `,
               className: 'custom-cluster',
               iconSize: [size, size],
             })
@@ -206,11 +206,11 @@ function App() {
                 hoveredCounty === feature.properties.COUNTY
               /* eslint-enable @typescript-eslint/no-unsafe-member-access */
               return {
-                fillColor: isHovered ? '#ffeb3b' : '#3388ff',
-                weight: isHovered ? 4 : 2,
+                fillColor: isHovered ? '#fef9c3' : '#3388ff', // Pale yellow-100 [web:38]
+                weight: isHovered ? 3 : 2, // Slightly less bold
                 opacity: 1,
-                color: isHovered ? '#f57f17' : '#0066cc',
-                fillOpacity: isHovered ? 0.7 : 0.2,
+                color: isHovered ? '#f59e0b' : '#0066cc', // Softer border
+                fillOpacity: isHovered ? 0.4 : 0.2, // Much subtler fill
               }
             }}
             onEachFeature={(feature: CountyFeature, layer) => {
